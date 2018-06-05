@@ -46,6 +46,7 @@ SeqScanExecutor::SeqScanExecutor(const planner::AbstractPlan *node,
  * @return true on success, false otherwise.
  */
 bool SeqScanExecutor::DInit() {
+  //LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);  
   auto status = AbstractScanExecutor::DInit();
 
   if (!status) return false;
@@ -76,6 +77,7 @@ bool SeqScanExecutor::DInit() {
  * @return true on success, false otherwise.
  */
 bool SeqScanExecutor::DExecute() {
+  //LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);    
 
   // Scanning over a logical tile.
   if (children_.size() == 1 &&
@@ -225,6 +227,7 @@ bool SeqScanExecutor::DExecute() {
 // this is used in the NLJoin executor
 void SeqScanExecutor::UpdatePredicate(const std::vector<oid_t> &column_ids,
                                       const std::vector<type::Value> &values) {
+  //LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);  
   std::vector<oid_t> predicate_column_ids;
 
   PELOTON_ASSERT(column_ids.size() <= column_ids_.size());

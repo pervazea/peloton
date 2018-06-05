@@ -77,6 +77,23 @@ llvm::Value *TileGroup::GetTileGroupId(CodeGen &codegen,
   return codegen.Call(TileGroupProxy::GetTileGroupId, {tile_group});
 }
 
+
+void TileGroup::GenerateIndexScan(CodeGen &codegen,
+                                  llvm::Value *tile_group_ptr,
+                                  llvm::Value *column_layouts,
+                                  llvm::Value *tile_group_offset,
+                                  ScanCallback &consumer) const {
+  // Get the column layouts
+  auto col_layouts = GetColumnLayouts(codegen, tile_group_ptr, column_layouts);
+
+  TileGroupAccess tile_group_access{*this, col_layouts};
+  consumer.ProcessTuples(codegen,
+                         tile_group_offset,
+                         codegen->CreateAdd(tile_group_offset,
+                                            codegen.Const32(1)),
+                         tile_group_access);
+}
+
 //===----------------------------------------------------------------------===//
 // Here, we discover the layout of every column that will be accessed. A
 // column's layout includes three pieces of information:

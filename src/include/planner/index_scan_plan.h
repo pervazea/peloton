@@ -127,6 +127,8 @@ class IndexScanPlan : public AbstractScan {
     return index_predicate_;
   }
 
+  void SetIndexPredicate(index::Index *index_p);
+
   const std::vector<type::Value> &GetValues() const { return values_; }
 
   const std::vector<expression::AbstractExpression *> &GetRunTimeKeys() const {
@@ -174,6 +176,11 @@ class IndexScanPlan : public AbstractScan {
     return std::unique_ptr<AbstractPlan>(new_plan);
   }
 
+  virtual void VisitParameters(
+    codegen::QueryParametersMap &map,
+    std::vector<peloton::type::Value> &values,
+    const std::vector<peloton::type::Value> &values_from_user) override;
+
  private:
   /** @brief index associated with index scan. */
   oid_t index_id_;
@@ -209,7 +216,7 @@ class IndexScanPlan : public AbstractScan {
   // In the future this might be extended into an array of conjunctive
   // predicates connected by disjunction
   index::IndexScanPredicate index_predicate_;
-
+  
   // whether the index scan range is left open
   bool left_open_ = false;
 

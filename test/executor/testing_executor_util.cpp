@@ -44,6 +44,35 @@ using ::testing::Return;
 namespace peloton {
 namespace test {
 
+/* Overview of data set / tables created by TestingExecutor Util.
+ * (not comprehensive).
+ * 
+ * Defaults
+ * tuples per tile group = 5
+ * tile groups = 3
+ * => number of rows 3 * 5 = 15
+ *
+ * Each value = rowid*10 + column id
+ * Default table rows (spread across tile groups), look like
+ *
+ * 1st tile group:
+ *  0,  1,  2,  3
+ * 10, 11, 12, 13
+ * ..
+ * 40, ...
+
+ * 2nd tile group:
+ * 50, 51, ...
+ * ..
+ * 90, 91, ..
+ * 
+ * 3rd tile group:
+ * 100, 101, ...
+ * ..
+ * 140, 141, ..
+ * 
+ */  
+
 storage::Database *TestingExecutorUtil::InitializeDatabase(
     const std::string &db_name) {
   auto catalog = catalog::Catalog::GetInstance();
@@ -182,11 +211,20 @@ std::shared_ptr<storage::TileGroup> TestingExecutorUtil::CreateTileGroup(
 
 /**
  * @brief Populates the table
- * @param table Table to populate with values.
+ * 
+ * @param table    Table to populate with values.
  * @param num_rows Number of tuples to insert.
+ * @param mutate   Start with rowid*3 rather than rowid for populate_value
+ * @param random   true: Use random numbers for columns 1 and up.
+ *                 false: Use populate_value
+ * @param group_by true: two rows with each value?
+ *                 false: distinct values in column 0
  */
-void TestingExecutorUtil::PopulateTable(storage::DataTable *table, int num_rows,
-                                        bool mutate, bool random, bool group_by,
+void TestingExecutorUtil::PopulateTable(storage::DataTable *table,
+                                        int num_rows,
+                                        bool mutate,
+                                        bool random,
+                                        bool group_by,
                                         concurrency::TransactionContext *current_txn) {
   // Random values
   if (random) std::srand(std::time(nullptr));

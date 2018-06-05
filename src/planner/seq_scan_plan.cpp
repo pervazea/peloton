@@ -259,6 +259,7 @@ oid_t SeqScanPlan::GetColumnID(std::string col_name) {
 }
 
 void SeqScanPlan::SetParameterValues(std::vector<type::Value> *values) {
+  LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);
   LOG_TRACE("Setting parameter values in Sequential Scan");
 
   for (auto &child_plan : GetChildren()) {
@@ -267,6 +268,7 @@ void SeqScanPlan::SetParameterValues(std::vector<type::Value> *values) {
 }
 
 hash_t SeqScanPlan::Hash() const {
+  LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);  
   auto type = GetPlanNodeType();
   hash_t hash = HashUtil::Hash(&type);
 
@@ -325,6 +327,8 @@ bool SeqScanPlan::operator==(const AbstractPlan &rhs) const {
 void SeqScanPlan::VisitParameters(
     codegen::QueryParametersMap &map, std::vector<peloton::type::Value> &values,
     const std::vector<peloton::type::Value> &values_from_user) {
+  LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);
+  
   AbstractPlan::VisitParameters(map, values, values_from_user);
 
   auto *predicate =

@@ -42,6 +42,12 @@ class TileGroup {
                        llvm::Value *column_layouts, uint32_t batch_size,
                        ScanCallback &consumer) const;
 
+  void GenerateIndexScan(CodeGen &codegen,
+                         llvm::Value *tile_group_ptr,
+                         llvm::Value *column_layouts,
+                         llvm::Value *tile_group_offset,
+                         ScanCallback &consumer) const;
+
   llvm::Value *GetNumTuples(CodeGen &codegen, llvm::Value *tile_group) const;
 
   llvm::Value *GetTileGroupId(CodeGen &codegen, llvm::Value *tile_group) const;

@@ -3086,7 +3086,7 @@ class BwTree : public BwTreeBase {
 
 #ifdef BWTREE_DEBUG
 
-    LOG_TRACE("Found leaf node. Abort count = %d, level = %d",
+    LOG_INFO("Found leaf node. Abort count = %d, level = %d",
               context_p->abort_counter, context_p->current_level);
 
 #endif

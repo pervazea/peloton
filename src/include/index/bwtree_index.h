@@ -96,6 +96,10 @@ class BWTreeIndex : public Index {
   void ScanKey(const storage::Tuple *key,
                std::vector<ValueType> &result) override;
 
+  void CodeGenRangeScan(storage::Tuple *low_key_p,
+                        storage::Tuple *high_key_p,
+                        std::vector<ItemPointer *> &result);
+
   std::string GetTypeName() const override;
 
   // TODO: Implement this

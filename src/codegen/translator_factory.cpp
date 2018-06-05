@@ -28,6 +28,7 @@
 #include "codegen/operator/hash_group_by_translator.h"
 #include "codegen/operator/hash_join_translator.h"
 #include "codegen/operator/hash_translator.h"
+#include "codegen/operator/index_scan_translator.h"
 #include "codegen/operator/insert_translator.h"
 #include "codegen/operator/order_by_translator.h"
 #include "codegen/operator/projection_translator.h"
@@ -44,6 +45,7 @@
 #include "planner/delete_plan.h"
 #include "planner/hash_join_plan.h"
 #include "planner/hash_plan.h"
+#include "planner/index_scan_plan.h"
 #include "planner/insert_plan.h"
 #include "planner/nested_loop_join_plan.h"
 #include "planner/order_by_plan.h"
@@ -65,6 +67,11 @@ std::unique_ptr<OperatorTranslator> TranslatorFactory::CreateTranslator(
     case PlanNodeType::SEQSCAN: {
       auto &scan = static_cast<const planner::SeqScanPlan &>(plan_node);
       translator = new TableScanTranslator(scan, context, pipeline);
+      break;
+    }
+    case PlanNodeType::INDEXSCAN: {
+      auto &scan = static_cast<const planner::IndexScanPlan &>(plan_node);
+      translator = new IndexScanTranslator(scan, context, pipeline);
       break;
     }
     case PlanNodeType::PROJECTION: {

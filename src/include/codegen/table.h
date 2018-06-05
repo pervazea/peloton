@@ -15,6 +15,7 @@
 #include "codegen/codegen.h"
 #include "codegen/scan_callback.h"
 #include "codegen/tile_group.h"
+#include "index/scan_optimizer.h"
 #include "type/value.h"
 
 namespace peloton {
@@ -43,6 +44,23 @@ class Table {
   void GenerateScan(CodeGen &codegen, llvm::Value *table_ptr,
                     uint32_t batch_size, ScanCallback &consumer,
                     llvm::Value *predicate_array, size_t num_predicates) const;
+
+  // Generate code to perform an index scan over the given table.
+  // The table pointer
+  // is provided as the second argument. The scan consumer (third argument)
+  // should be notified when ready to generate the scan loop body.
+  void GenerateIndexScan(CodeGen &codegen, llvm::Value *table_ptr,
+                         uint32_t batch_size, ScanCallback &consumer,
+                         llvm::Value *predicate_array,
+                         size_t num_predicates,
+                         const index::ConjunctionScanPredicate *csp,
+                         llvm::Value *index_ptr) const;
+
+  /*
+  void SetIndexPredicate(CodeGen &codegen,
+                         llvm::Value *iterator_ptr,
+                         const planner::IndexScanPlan &index_scan) const;
+  */
 
   // Given a table instance, return the number of tile groups in the table.
   llvm::Value *GetTileGroupCount(CodeGen &codegen,

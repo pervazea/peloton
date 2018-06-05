@@ -11,8 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "codegen/proxy/storage_manager_proxy.h"
-
 #include "codegen/proxy/data_table_proxy.h"
+#include "codegen/proxy/index_proxy.h"
 
 namespace peloton {
 namespace codegen {
@@ -22,6 +22,8 @@ DEFINE_TYPE(StorageManager, "peloton::storage::StorageManager", MEMBER(opaque));
 
 // Define a method that proxies storage::StorageManager::GetTableWithOid()
 DEFINE_METHOD(peloton::storage, StorageManager, GetTableWithOid);
+  
+DEFINE_METHOD(peloton::storage, StorageManager, GetIndexWithOid);
 
 }  // namespace codegen
 }  // namespace peloton

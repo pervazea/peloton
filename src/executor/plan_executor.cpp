@@ -56,6 +56,7 @@ static void CompileAndExecutePlan(
   // Compile the query
   codegen::Query *query = codegen::QueryCache::Instance().Find(plan);
   if (query == nullptr) {
+    LOG_INFO("not found in cache");
     codegen::QueryCompiler compiler;
     auto compiled_query = compiler.Compile(
         *plan, executor_context->GetParams().GetQueryParametersMap(), consumer);

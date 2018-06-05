@@ -29,6 +29,17 @@ namespace expression {
 class AbstractExpression;
 }  // namespace storage
 
+namespace index {
+  class Index;
+} // namespace index
+
+
+namespace codegen {
+namespace util {
+class IndexScanIterator;
+}  // namespace util
+}  // namespace codegen  
+
 namespace codegen {
 //===----------------------------------------------------------------------===//
 // Various common functions that are called from compiled query plans
@@ -46,9 +57,13 @@ class RuntimeFunctions {
   // the version in DataTable because we need to strip off the shared_ptr
   static storage::TileGroup *GetTileGroup(storage::DataTable *table,
                                           uint64_t tile_group_index);
+  
+  static storage::TileGroup *GetTileGroupById(storage::DataTable *table,
+                                              uint32_t tile_group_id);
 
   static void FillPredicateArray(const expression::AbstractExpression *expr,
                                  storage::PredicateInfo *predicate_array);
+
 
   // This struct represents the layout (or configuration) of a column in a
   // tile group. A configuration is characterized by two properties: its
@@ -71,6 +86,13 @@ class RuntimeFunctions {
   static void ThrowDivideByZeroException();
 
   static void ThrowOverflowException();
+  
+  static util::IndexScanIterator *GetIterator(index::Index *index,
+                                              int64_t point_key_p,
+                                              int64_t low_key_p,
+                                              int64_t high_key_p);
+
+  static void DeleteIterator(util::IndexScanIterator *iterator);
 };
 
 }  // namespace codegen

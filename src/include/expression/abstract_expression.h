@@ -67,7 +67,7 @@ class AbstractExpression : public Printable {
  public:
 
   /**
-   * @brief Apply the operator to the inputs and produce ouput
+   * @brief Apply the operator to the inputs and produce output
    *
    * This will be removed in the future and replaced by the
    * the LLVM engine. You should not modify any Evaluate methods
@@ -157,9 +157,17 @@ class AbstractExpression : public Printable {
   virtual void GetUsedAttributes(
       std::unordered_set<const planner::AttributeInfo *> &attributes) const;
 
+  virtual void GetUsedAttributesInPredicateOrder(
+      std::vector<const planner::AttributeInfo *> &attributes,
+      std::vector<const AbstractExpression *> &constant_value_expressions)
+      const;
+
+  virtual void GetComparisonTypeInPredicateOrder(
+      std::vector<ExpressionType> &comparison_type) const;
+
   virtual void DeduceExpressionType() {}
 
-  // Walks the expressoin trees and generate the correct expression name
+  // Walks the expression trees and generate the correct expression name
   virtual void DeduceExpressionName();
 
   virtual const std::string GetInfo(int num_indent) const;

@@ -42,6 +42,7 @@ class SeqScanPlan : public AbstractScan {
               expression::AbstractExpression *predicate,
               const std::vector<oid_t> &column_ids, bool is_for_update = false)
       : AbstractScan(table, predicate, column_ids) {
+    LOG_DEBUG("Enter %s", __FUNCTION__);    
     LOG_TRACE("Creating a Sequential Scan Plan");
 
     SetForUpdateFlag(is_for_update);

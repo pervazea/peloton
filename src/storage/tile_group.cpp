@@ -84,7 +84,10 @@ oid_t TileGroup::GetTileGroupId() const {
 
 // TODO: check when this function is called. --Yingjun
 oid_t TileGroup::GetNextTupleSlot() const {
-  return tile_group_header->GetCurrentNextTupleSlot();
+  auto var =  tile_group_header->GetCurrentNextTupleSlot();
+  // LOG_INFO("GetNextTupleSlot: %u", var);
+  return var;
+  //return tile_group_header->GetCurrentNextTupleSlot();
 }
 
 // this function is called only when building tile groups for aggregation

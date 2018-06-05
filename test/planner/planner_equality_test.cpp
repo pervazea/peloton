@@ -18,6 +18,7 @@
 #include "parser/postgresparser.h"
 #include "sql/testing_sql_util.h"
 
+
 namespace peloton {
 namespace test {
 
@@ -57,6 +58,19 @@ class PlannerEqualityTest : public PelotonTest {
 
     // Create a table 'test3'
     TestingSQLUtil::ExecuteSQLQuery("CREATE TABLE test3(a INT, b INT, c INT);");
+  }
+
+  /**
+   * @brief Create indexes for the index_scan test
+   */
+  void CreateIndex() {
+    TestingSQLUtil::ExecuteSQLQuery("CREATE INDEX idx1 on test(a);");
+    TestingSQLUtil::ExecuteSQLQuery("CREATE INDEX idx2 on test(b);");
+    TestingSQLUtil::ExecuteSQLQuery("CREATE INDEX idx3 on test(c);");
+
+    TestingSQLUtil::ExecuteSQLQuery("CREATE INDEX idx4 on test2(a);");
+    TestingSQLUtil::ExecuteSQLQuery("CREATE INDEX idx5 on test2(b);");
+    TestingSQLUtil::ExecuteSQLQuery("CREATE INDEX idx6 on test2(c);");
   }
 
   std::shared_ptr<planner::AbstractPlan> GeneratePlanWithOptimizer(
@@ -287,6 +301,109 @@ TEST_F(PlannerEqualityTest, Update) {
 
     auto is_equal = (*plan_1 == *plan_2);
     EXPECT_EQ(item.is_equal, is_equal);
+  }
+}
+
+TEST_F(PlannerEqualityTest, IndexScan) {
+  // set up optimizer for every test
+  optimizer.reset(new optimizer::Optimizer());
+
+  // create index on tables
+  CreateIndex();
+
+  std::vector<TestItem> items{
+    {"SELECT * from test",
+     "SELECT * from test where a = 0", false, false},
+
+    {"SELECT * from test where a = 1",
+     "SELECT * from test where a = 0", true, true},
+
+    {"SELECT * from test where b = 1",
+     "SELECT * from test where b > 0", false, false},
+
+    {"SELECT * from test where a = 1",
+     "SELECT * from test where c = 0", false, false},
+
+    {"SELECT a from test where b = 1",
+     "SELECT c from test where b = 0", false, false},
+
+    {"SELECT a,b from test where b = 1",
+     "SELECT b,a from test where b = 0", false, false},
+
+    {"SELECT a,b from test where b = 1",
+     "SELECT a,b from test where b = $1", true, true},
+
+    {"SELECT a,b from test where b = $1",
+     "SELECT a,b from test where b = 9", true, true},
+
+    // this one seems pointless
+    {"SELECT a,b from test where b = $1",
+     "SELECT a,b from test where b = $1", true, true},
+
+    {"SELECT a,b from test where b = $1",
+     "SELECT a,b from test where b = null", false, false},
+
+    // duplicates one several items above (commutative)?
+    {"SELECT a,b from test where b = $1",
+     "SELECT a,b from test where b = 1", true, true},
+
+    {"SELECT a,b from test where b = null",
+     "SELECT a,b from test where b = 1", false, false},
+
+    {"SELECT DISTINCT a from test where b = 1",
+     "SELECT a from test where b = 0", false, false},
+
+    {"SELECT * FROM test, test2 WHERE test.a = 1 AND test2.b = 0",
+     "SELECT * FROM test, test2 WHERE test.a = 1 AND test2.b = 0", true, true},
+
+    {"SELECT test.a, test.b, test3.b, test2.c FROM test2, test, test3 "
+        "WHERE test.b = test2.b AND test2.c = test3.c",
+
+     "SELECT test.a, test.b, test2.c, test3.b FROM test2, test, test3 "
+        "WHERE test.b = test2.b AND test2.c = test3.c",
+        false, false},
+
+    {"SELECT * FROM test WHERE a > 0 AND a < 10",
+     "SELECT * FROM test WHERE a > 11 AND a < 21", true, true},
+
+    // wrong - is true
+    {"SELECT * FROM test WHERE a > 0 AND a < 10",
+     "SELECT * FROM test WHERE b > 11 AND b < 21", false, false},
+
+    // wrong - is true
+    {"SELECT * FROM test WHERE a > 0 AND a < 10",
+     "SELECT * FROM test2 WHERE a > 11 AND a < 21", false, false}};
+
+  for (uint32_t i = 0; i < items.size(); i++) {
+    auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+    auto txn = txn_manager.BeginTransaction();
+
+    TestItem &item = items[i];
+    auto plan_1 = GeneratePlanWithOptimizer(optimizer, item.q1, txn);
+    auto plan_2 = GeneratePlanWithOptimizer(optimizer, item.q2, txn);
+    txn_manager.CommitTransaction(txn);
+
+    planner::BindingContext context_1;
+    plan_1->PerformBinding(context_1);
+
+    planner::BindingContext context_2;
+    plan_2->PerformBinding(context_2);
+
+    auto hash_equal = (plan_1->Hash() == plan_2->Hash());
+    if (item.hash_equal != hash_equal) {
+      EXPECT_EQ(item.hash_equal, hash_equal);
+      std::cerr << "plan hash equality failed, index=" << i << std::endl;
+      std::cerr << "query: " << item.q1 << std::endl;
+      std::cerr << "query: " << item.q2 << std::endl << std::endl;
+    }
+
+    auto is_equal = (*plan_1 == *plan_2);
+    if (item.is_equal != is_equal) {
+      EXPECT_EQ(item.is_equal, is_equal);
+      std::cerr << "plan equality failed, index=" << i << std::endl;
+      std::cerr << "query: " << item.q1 << std::endl;
+      std::cerr << "query: " << item.q2 << std::endl << std::endl;
+    }
   }
 }
 

@@ -164,11 +164,11 @@ bool IndexScanExecutor::ExecPrimaryIndexLookup() {
   PELOTON_ASSERT(index_->GetIndexType() == IndexConstraintType::PRIMARY_KEY);
 
   if (0 == key_column_ids_.size()) {
+    // no indexed columns, so have to look at all the keys
     index_->ScanAllKeys(tuple_location_ptrs);
   } else {
-    // Limit clause accelerate
     if (limit_) {
-      // invoke index scan limit
+      // there is a limit clause, return only the requested no. of values.
       if (!descend_) {
         LOG_TRACE("ASCENDING SCAN LIMIT in Primary Index");
         index_->ScanLimit(values_, key_column_ids_, expr_types_,
@@ -184,9 +184,8 @@ bool IndexScanExecutor::ExecPrimaryIndexLookup() {
 
         LOG_TRACE("1-Result size is %lu", result_.size());
       }
-    }
-    // Normal SQL (without limit)
-    else {
+    } else {
+      // No limit clause. Return all values.
       LOG_TRACE("Index Scan in Primary Index");
       index_->Scan(values_, key_column_ids_, expr_types_,
                    ScanDirectionType::FORWARD, tuple_location_ptrs,
@@ -197,6 +196,7 @@ bool IndexScanExecutor::ExecPrimaryIndexLookup() {
   }
 
   if (tuple_location_ptrs.size() == 0) {
+    // no items matched the predicate
     LOG_TRACE("no tuple is retrieved from index.");
     return false;
   }

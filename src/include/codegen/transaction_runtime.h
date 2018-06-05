@@ -42,8 +42,19 @@ namespace codegen {
 //===----------------------------------------------------------------------===//
 class TransactionRuntime {
  public:
-  // Perform a read operation for all tuples in the given tile group with IDs
-  // in the range [tid_start, tid_end) in the context of the given transaction
+  /**
+   * Perform a read operation for all visible tuples in the given tile group
+   * with IDs in the range [tid_start, tid_end] in the context of the 
+   * given transaction.
+   *
+   * @param[in] txn               - transaction
+   * @param[in] tile_group        - the tile group to read from
+   * @param[in] tid_start         - starting tuple id for the read
+   * @param[in] tid_end           - ending tuple id
+   * @param[out] selection_vector - tuples read
+   * 
+   * @return index of the next free slot in the selection vector?
+   */
   static uint32_t PerformVectorizedRead(concurrency::TransactionContext &txn,
                                         storage::TileGroup &tile_group,
                                         uint32_t tid_start, uint32_t tid_end,

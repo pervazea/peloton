@@ -121,6 +121,7 @@ class IndexScanExecutor : public AbstractScanExecutor {
   bool right_open_ = false;
 
   // copy from underlying plan
+  // Not true?
   index::IndexScanPredicate index_predicate_;
 
   // whether it is an order by + limit plan

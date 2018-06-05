@@ -38,6 +38,10 @@ class ParameterCache {
 
   // Clear all cache parameter values
   void Reset();
+  
+  const QueryParametersMap &GetQueryParametersMap() const {
+    return parameters_map_;
+  }
 
  private:
   static codegen::Value DeriveParameterValue(CodeGen &codegen,

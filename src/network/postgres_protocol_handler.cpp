@@ -1008,7 +1008,7 @@ bool PostgresProtocolHandler::ReadPacket(Buffer &rbuf, InputPacket &rpkt) {
  */
 ProcessResult PostgresProtocolHandler::ProcessInitialPacket(InputPacket *pkt) {
   int32_t proto_version = PacketGetInt(pkt, sizeof(int32_t));
-  LOG_INFO("protocol version: %d", proto_version);
+  LOG_TRACE("protocol version: %d", proto_version);
 
   force_flush_ = true;
   // TODO(Yuchen): consider more about return value

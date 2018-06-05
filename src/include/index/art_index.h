@@ -86,6 +86,10 @@ class ArtIndex : public Index {
   void ScanKey(const storage::Tuple *key,
                std::vector<ItemPointer *> &result) override;
 
+  void CodeGenRangeScan(UNUSED_ATTRIBUTE storage::Tuple *low_key_p,
+                        UNUSED_ATTRIBUTE storage::Tuple *high_key_p,
+                        UNUSED_ATTRIBUTE std::vector<ItemPointer *> &result) {}
+
   /// Return the index type
   std::string GetTypeName() const override {
     return IndexTypeToString(GetIndexMethodType());

@@ -13,6 +13,7 @@
 #include "codegen/operator/operator_translator.h"
 
 #include "codegen/compilation_context.h"
+//#include "codegen/scan_callback.h"
 
 namespace peloton {
 namespace codegen {

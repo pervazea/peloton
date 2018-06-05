@@ -334,6 +334,16 @@ class Index : public Printable {
   virtual void ScanKey(const storage::Tuple *key,
                        std::vector<ItemPointer *> &result) = 0;
 
+
+  /**
+   * @param low_key_p
+   * @param high_key_p
+   * @param[out] result
+   */
+  virtual void CodeGenRangeScan(storage::Tuple *low_key_p,
+                                storage::Tuple *high_key_p,
+                                std::vector<ItemPointer *> &result) = 0;
+  
   //////////////////////////////////////////////////////////////////////////////
   /// Garbage Collection
   //////////////////////////////////////////////////////////////////////////////

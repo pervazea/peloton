@@ -12,10 +12,13 @@
 
 #pragma once
 
+//#include "codegen/compilation_context.h"
+//#include "codegen/consumer_context.h"
 #include "codegen/codegen.h"
 #include "codegen/pipeline.h"
 #include "codegen/row_batch.h"
 #include "codegen/runtime_state.h"
+//#include "codegen/scan_callback.h"
 
 namespace peloton {
 namespace codegen {

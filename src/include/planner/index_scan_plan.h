@@ -16,11 +16,11 @@
 #include <string>
 #include <vector>
 
+#include "common/internal_types.h"
 #include "expression/abstract_expression.h"
 #include "index/scan_optimizer.h"
 #include "planner/abstract_scan_plan.h"
 #include "storage/tuple.h"
-#include "common/internal_types.h"
 
 namespace peloton {
 

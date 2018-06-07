@@ -15,7 +15,7 @@
 namespace peloton {
 namespace codegen {
 
-DEFINE_TYPE(Index, "index::Index", MEMBER(opaque));
+DEFINE_TYPE(Index, "index::Index", opaque);
 
 }  // namespace codegen
 }  // namespace peloton

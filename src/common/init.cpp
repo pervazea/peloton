@@ -15,8 +15,6 @@
 #include <gflags/gflags.h>
 #include <google/protobuf/stubs/common.h>
 
-#include "tuning/index_tuner.h"
-#include "tuning/layout_tuner.h"
 #include "catalog/catalog.h"
 #include "common/statement_cache_manager.h"
 #include "common/thread_pool.h"
@@ -25,6 +23,8 @@
 #include "index/index.h"
 #include "settings/settings_manager.h"
 #include "threadpool/mono_queue_pool.h"
+#include "tuning/index_tuner.h"
+#include "tuning/layout_tuner.h"
 
 namespace peloton {
 
@@ -32,7 +32,7 @@ ThreadPool thread_pool;
 
 void PelotonInit::Initialize() {
   CONNECTION_THREAD_COUNT = settings::SettingsManager::GetInt(
-          settings::SettingId::connection_thread_count);
+      settings::SettingId::connection_thread_count);
   LOGGING_THREAD_COUNT = 1;
   GC_THREAD_COUNT = 1;
   EPOCH_THREAD_COUNT = 1;
@@ -47,6 +47,9 @@ void PelotonInit::Initialize() {
   if (settings::SettingsManager::GetBool(settings::SettingId::brain)) {
     threadpool::MonoQueuePool::GetBrainInstance().Startup();
   }
+
+  // start parallel execution pool
+  threadpool::MonoQueuePool::GetExecutionInstance().Startup();
 
   int parallelism = (CONNECTION_THREAD_COUNT + 3) / 4;
   storage::DataTable::SetActiveTileGroupCount(parallelism);
@@ -110,6 +113,9 @@ void PelotonInit::Shutdown() {
 
   // shut down epoch.
   concurrency::EpochManagerFactory::GetInstance().StopEpoch();
+
+  // shutdown execution thread pool
+  threadpool::MonoQueuePool::GetExecutionInstance().Shutdown();
 
   // stop worker pool
   threadpool::MonoQueuePool::GetInstance().Shutdown();

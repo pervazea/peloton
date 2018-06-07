@@ -92,6 +92,7 @@ bool UpdateExecutor::PerformUpdatePrimaryKey(
     return false;
   }
   transaction_manager.PerformDelete(current_txn, old_location, new_location);
+  statement_write_set_.insert(new_location);
 
   ////////////////////////////////////////////
   // Insert tuple rather than install version
@@ -191,9 +192,6 @@ bool UpdateExecutor::DExecute() {
     oid_t physical_tuple_id = pos_lists[0][visible_tuple_id];
 
     ItemPointer old_location(tile_group->GetTileGroupId(), physical_tuple_id);
-    if (IsInStatementWriteSet(old_location)) {
-      continue;
-    }
 
     LOG_TRACE("Visible Tuple id : %u, Physical Tuple id : %u ",
               visible_tuple_id, physical_tuple_id);
@@ -204,8 +202,8 @@ bool UpdateExecutor::DExecute() {
     if (current_txn->GetIsolationLevel() == IsolationLevelType::SNAPSHOT) {
       old_location = *(tile_group_header->GetIndirection(physical_tuple_id));
 
-      auto &manager = catalog::Manager::GetInstance();
-      tile_group = manager.GetTileGroup(old_location.block).get();
+      auto storage_manager = storage::StorageManager::GetInstance();
+      tile_group = storage_manager->GetTileGroup(old_location.block).get();
       tile_group_header = tile_group->GetHeader();
 
       physical_tuple_id = old_location.offset;
@@ -220,6 +218,11 @@ bool UpdateExecutor::DExecute() {
       }
     }
     ///////////////////////////////////////////////////////////
+
+    
+    if (IsInStatementWriteSet(old_location)) {
+      continue;
+    }
 
     if (trigger_list != nullptr) {
       LOG_TRACE("size of trigger list in target table: %d",
@@ -268,7 +271,8 @@ bool UpdateExecutor::DExecute() {
                                 executor_context_);
 
         transaction_manager.PerformUpdate(current_txn, old_location);
-        statement_write_set_.insert(old_location);
+        // we do not need to add any item pointer to statement-level write set
+        // here, because we do not generate any new version
       }
     }
     // if we have already obtained the ownership
@@ -317,8 +321,8 @@ bool UpdateExecutor::DExecute() {
           // acquire a version slot from the table.
           ItemPointer new_location = target_table_->AcquireVersion();
 
-          auto &manager = catalog::Manager::GetInstance();
-          auto new_tile_group = manager.GetTileGroup(new_location.block);
+          auto storage_manager = storage::StorageManager::GetInstance();
+          auto new_tile_group = storage_manager->GetTileGroup(new_location.block);
 
           ContainerTuple<storage::TileGroup> new_tuple(new_tile_group.get(),
                                                        new_location.offset);

@@ -19,6 +19,7 @@
 #include "common/logger.h"
 #include "common/statement.h"
 #include "executor/copy_executor.h"
+#include "executor/executor_context.h"
 #include "executor/seq_scan_executor.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/rule.h"
@@ -112,7 +113,8 @@ TEST_F(CopyTests, Copying) {
   // Now Copying end-to-end
   LOG_TRACE("Copying a table...");
   std::string copy_sql =
-      "COPY emp_db.department_table TO './copy_output.csv' DELIMITER ',';";
+      "COPY emp_db.public.department_table TO './copy_output.csv' DELIMITER "
+      "',';";
   txn = txn_manager.BeginTransaction();
   LOG_TRACE("Query: %s", copy_sql.c_str());
   std::unique_ptr<Statement> statement(new Statement("COPY", copy_sql));

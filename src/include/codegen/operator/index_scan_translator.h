@@ -44,7 +44,7 @@ class IndexScanTranslator : public OperatorTranslator {
   IndexScanTranslator(const planner::IndexScanPlan &index_scan,
                       CompilationContext &context, Pipeline &pipeline);
 
-  void InitializeState() override {}
+  void InitializeQueryState() override {}
 
   // Index scans don't rely on any auxiliary functions
   void DefineAuxiliaryFunctions() override {}
@@ -57,13 +57,16 @@ class IndexScanTranslator : public OperatorTranslator {
   void Consume(ConsumerContext &, RowBatch::Row &) const override {}
 
   // Similar to InitializeState(), index scans don't have any state
-  void TearDownState() override {}
+  void TearDownQueryState() override {}
 
   // Get a stringified version of this translator
-  std::string GetName() const override;
-
+  std::string GetName() const;
 
  private:
+  // Helper class declarations (defined in implementation)
+  class AttributeAccess;
+  class ScanConsumer;
+  /*
   //-----------------
   // An attribute accessor that uses the backing tile group to access columns
   //-----------------
@@ -145,6 +148,7 @@ class IndexScanTranslator : public OperatorTranslator {
     // The current tile group we're scanning over
     llvm::Value *tile_group_ptr_;
   };
+  */
 
  private:  
   // Plan accessor
@@ -189,7 +193,7 @@ class IndexScanTranslator : public OperatorTranslator {
   // index::IndexScanPredicate index_predicate_;  
 
   // The ID of the selection vector in runtime state
-  RuntimeState::StateID selection_vector_id_;
+  //  RuntimeState::StateID selection_vector_id_;
 
   // The code-generating table instance
   codegen::Table table_;

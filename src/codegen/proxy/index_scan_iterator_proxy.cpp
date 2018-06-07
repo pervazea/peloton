@@ -15,7 +15,7 @@
 namespace peloton {
 namespace codegen {
 DEFINE_TYPE(IndexScanIterator, "peloton::codegen::util::IndexScanIterator",
-            MEMBER(opaque));
+            opaque);
 
 DEFINE_METHOD(peloton::codegen::util, IndexScanIterator, DoScan);
 //DEFINE_METHOD(peloton::codegen::util, IndexScanIterator,

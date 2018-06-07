@@ -12,8 +12,8 @@
 
 #include "common/harness.h"
 
-#include "concurrency/transaction_manager_factory.h"
 #include "catalog/catalog.h"
+#include "concurrency/transaction_manager_factory.h"
 #include "storage/data_table.h"
 #include "storage/database.h"
 #include "storage/storage_manager.h"
@@ -62,12 +62,17 @@ TEST_F(DatabaseTests, AddDropTableTest) {
   int table_oid = data_table->GetOid();
 
   database->AddTable(data_table.get());
+  // NOTE: everytime we create a database, there will be 8 catalog tables inside
+  // Addtionally, we created a table for the test
+  oid_t expected_table_count = CATALOG_TABLES_COUNT + 1;
 
-  EXPECT_TRUE(database->GetTableCount() == 1);
+  EXPECT_EQ(expected_table_count, database->GetTableCount());
 
   database->DropTableWithOid(table_oid);
 
-  EXPECT_TRUE(database->GetTableCount() == 0);
+  // Account for the dropped table.
+  expected_table_count--;
+  EXPECT_EQ(expected_table_count, database->GetTableCount());
 
   data_table.release();
 

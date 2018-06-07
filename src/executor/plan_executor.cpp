@@ -36,6 +36,7 @@ static void CompileAndExecutePlan(
     std::shared_ptr<planner::AbstractPlan> plan,
     concurrency::TransactionContext *txn,
     const std::vector<type::Value> &params,
+    const std::vector<int> &result_format,
     std::function<void(executor::ExecutionResult, std::vector<ResultValue> &&)>
         on_complete) {
   LOG_TRACE("Compiling and executing query ...");
@@ -56,6 +57,8 @@ static void CompileAndExecutePlan(
   // Check if we have a cached compiled plan already
   codegen::Query *query = codegen::QueryCache::Instance().Find(plan);
   if (query == nullptr) {
+    LOG_INFO("query not in cache - compiling");
+    LOG_INFO("%s", plan->GetInfo().c_str());
     // Cached plan doesn't exist, let's compile the query
     codegen::QueryCompiler compiler;
     auto compiled_query = compiler.Compile(
@@ -66,9 +69,12 @@ static void CompileAndExecutePlan(
 
     // Insert the compiled plan into the cache
     codegen::QueryCache::Instance().Add(plan, std::move(compiled_query));
+  } else {
+    LOG_INFO("query found in cache");
   }
 
   // Execute the query!
+  LOG_INFO("execute query");  
   query->Execute(executor_context, consumer);
 
   // Execution complete, setup the results
@@ -76,14 +82,43 @@ static void CompileAndExecutePlan(
   result.m_processed = executor_context.num_processed;
   result.m_result = ResultType::SUCCESS;
 
+  LOG_INFO("process query results");    
   // Iterate over results
   std::vector<ResultValue> values;
   for (const auto &tuple : consumer.GetOutputTuples()) {
     for (uint32_t i = 0; i < tuple.tuple_.size(); i++) {
       auto column_val = tuple.GetValue(i);
-      auto str = column_val.IsNull() ? "" : column_val.ToString();
-      LOG_TRACE("column content: [%s]", str.c_str());
-      values.push_back(std::move(str));
+      PELOTON_ASSERT((result_format[i] == 0) || (result_format[i] == 1));
+      if (result_format[i] == 0) {
+        // result values sent as text
+        auto str = column_val.IsNull() ? "" : column_val.ToString();
+        LOG_TRACE("column content: [%s]", str.c_str());
+        values.push_back(std::move(str));
+      } else if (result_format[i] == 1) {
+        LOG_INFO("convert result to binary");
+        // result values sent as binary
+        size_t col_length;
+        bool is_inlined = false;
+        type::TypeId col_type = tuple.tuple_[i].GetElementType();
+        if (col_type == type::TypeId::VARBINARY) {
+          // length of varlen type is simply the length
+          col_length = tuple.tuple_[i].GetLength();
+        } else {
+          // length determined from the column type
+          col_length = sizeof(col_type);
+        }
+        // save as binary
+        char *val_binary = new char[col_length];
+        column_val.SerializeTo(val_binary, is_inlined, nullptr);
+        // hton. This should be done using the existing host to network
+        // conversion functions, not this way
+        for (size_t i = 0; i < (col_length >> 1); ++i) {
+          auto tmp_char = val_binary[i];
+          val_binary[i] = val_binary[col_length - i - 1];
+          val_binary[col_length - i - 1] = tmp_char;
+        }
+        values.push_back(std::string(val_binary, col_length));
+      } 
     }
   }
 
@@ -163,7 +198,7 @@ void PlanExecutor::ExecutePlan(
 
   try {
     if (codegen_enabled && codegen::QueryCompiler::IsSupported(*plan)) {
-      CompileAndExecutePlan(plan, txn, params, on_complete);
+      CompileAndExecutePlan(plan, txn, params, result_format, on_complete);
     } else {
       InterpretPlan(plan, txn, params, result_format, on_complete);
     }

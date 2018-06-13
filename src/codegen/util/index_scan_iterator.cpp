@@ -32,19 +32,19 @@ IndexScanIterator::IndexScanIterator(index::Index *index,
     is_point_query_ = true;
     is_full_scan_ = false;
     point_key_p_ = point_key_p;
-    LOG_INFO("point scan");    
+    LOG_DEBUG("point scan");
   } else if (low_key_p != nullptr && high_key_p != nullptr) {
     // range scan
     is_point_query_ = false;
     is_full_scan_ = false;
     low_key_p_ = low_key_p;
     high_key_p_ = high_key_p;
-    LOG_INFO("range scan");    
+    LOG_DEBUG("range scan");
   } else {
     // full scan
     is_point_query_ = false;
     is_full_scan_ = true;
-    LOG_INFO("full scan");    
+    LOG_DEBUG("full scan");
   }
 }
 
@@ -56,8 +56,8 @@ void IndexScanIterator::DoScan() {
   } else {
     index_->CodeGenRangeScan(low_key_p_, high_key_p_, result_);
   }
-  LOG_INFO("result size = %lu\n", result_.size());
-  LogDoScanResults();
+  LOG_DEBUG("result size = %lu\n", result_.size());
+  // LogDoScanResults();
 
   // TODO: fix whatever implementation deficiency this comment implies
   // TODO:

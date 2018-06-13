@@ -81,12 +81,6 @@ public:
       tile_group_id_(nullptr),
       tile_group_ptr_(nullptr) {}
   
-  /*
-  ScanConsumer(const IndexScanTranslator &translator,
-               Vector &selection_vector);
-
-  */
-
   // Initialize for reading from a tile group
   void TileGroupStart(CodeGen &, llvm::Value *tile_group_id,
                       llvm::Value *tile_group_ptr) override {
@@ -121,11 +115,6 @@ public:
                              const TileGroup::TileGroupAccess &access,
                              llvm::Value *tid_start, llvm::Value *tid_end,
                              Vector &selection_vector) const;
-
-  /*
-  llvm::Value *SIMDFilterRows(RowBatch &batch,
-                              const TileGroup::TileGroupAccess &access) const;
-  */
 
  private:
   // The consumer context
@@ -174,8 +163,13 @@ IndexScanTranslator::IndexScanTranslator(
   // Set the conjunction scan predicate into the index scan plan.  
   // TODO: fix, const_cast? Determine if there is a better place
   // for keeping the CSP, e.g. move csp to query_state? c.f. hash join
+
+  // setting here is too late. Cached plans fail on search, as incoming
+  // plans don't have csp set
+  /*
   const_cast<planner::IndexScanPlan &>(index_scan_).SetIndexPredicate(
     index.get());
+  */
   
   // debugging
   // std::vector<ItemPointer *> tuple_location_ptrs;
@@ -183,68 +177,6 @@ IndexScanTranslator::IndexScanTranslator(
 }
   
 void IndexScanTranslator::Produce() const {
-
-#ifdef notdef
-  auto &codegen = GetCodeGen();
-
-  const index::ConjunctionScanPredicate *csp =
-    &(index_scan_.GetIndexPredicate().GetConjunctionList()[0]);
-
-  // get pointer to data table
-  storage::DataTable &table = *index_scan_.GetTable();
-  
-  llvm::Value *storage_manager_ptr = GetStorageManagerPtr();
-  llvm::Value *db_oid = codegen.Const32(table.GetDatabaseOid());
-  llvm::Value *table_oid = codegen.Const32(table.GetOid());
-  // get llvm's ptr to the data table  
-  llvm::Value *table_ptr =
-      codegen.Call(StorageManagerProxy::GetTableWithOid,
-                   {storage_manager_ptr, db_oid, table_oid});
-
-  // get llvm's handle to the index
-  llvm::Value *index_oid = codegen.Const32(index_scan_.GetIndexId());
-  llvm::Value *index_ptr =
-    codegen.Call(StorageManagerProxy::GetIndexWithOid,
-                 {storage_manager_ptr, db_oid, table_oid, index_oid});
-
-  // The selection vector for the scan
-  /*
-  auto *raw_vec = codegen.AllocateBuffer(
-      codegen.Int32Type(), Vector::kDefaultVectorSize, "scanSelVector");
-  Vector sel_vec{raw_vec, Vector::kDefaultVectorSize, codegen.Int32Type()};
-  */
-  auto *i32_type = codegen.Int32Type();
-  auto vec_size = Vector::kDefaultVectorSize.load();  
-  auto *raw_vec = codegen.AllocateBuffer(i32_type, vec_size, "scanSelVector");
-  Vector sel_vec{raw_vec, vec_size, i32_type};  
-
-  // tracks the number of results from the scan
-  llvm::Value *out_idx = codegen.Const32(0);  
-  sel_vec.SetNumElements(out_idx);
-
-  // TODO - examine
-  auto predicate = const_cast<expression::AbstractExpression *>(
-      GetIndexScanPlan().GetPredicate());
-  llvm::Value *predicate_ptr = codegen->CreateIntToPtr(
-      codegen.Const64((int64_t)predicate),
-      AbstractExpressionProxy::GetType(codegen)->getPointerTo());
-
-  // zone maps not currently used. Remove?  
-  size_t num_preds = 0;  
-  auto *zone_map_manager = storage::ZoneMapManager::GetInstance();
-  if (predicate != nullptr && zone_map_manager->ZoneMapTableExists()) {
-    if (predicate->IsZoneMappable()) {
-      num_preds = predicate->GetNumberofParsedPredicates();
-    }
-  }
-
-  // Generate the scan
-  ScanConsumer scan_consumer{*this, sel_vec};
-  table_.GenerateIndexScan(codegen, table_ptr, sel_vec.GetCapacity(),
-                           scan_consumer, predicate_ptr, num_preds,
-                           csp, index_ptr);
-#endif /* notdef */
-
   auto producer = [this](ConsumerContext &ctx) {
     auto &codegen = GetCodeGen();
 
@@ -269,11 +201,6 @@ void IndexScanTranslator::Produce() const {
     {storage_manager_ptr, db_oid, table_oid, index_oid});
 
     // The selection vector for the scan
-    /*
-      auto *raw_vec = codegen.AllocateBuffer(
-      codegen.Int32Type(), Vector::kDefaultVectorSize, "scanSelVector");
-      Vector sel_vec{raw_vec, Vector::kDefaultVectorSize, codegen.Int32Type()};
-    */
     auto *i32_type = codegen.Int32Type();
     auto vec_size = Vector::kDefaultVectorSize.load();  
     auto *raw_vec = codegen.AllocateBuffer(i32_type, vec_size, "scanSelVector");
@@ -429,13 +356,6 @@ void IndexScanTranslator::SetIndexPredicate(UNUSED_ATTRIBUTE CodeGen &codegen,
  * --------------------
  */
 
-/*
-// Constructor
-IndexScanTranslator::ScanConsumer::ScanConsumer(
-    const IndexScanTranslator &translator, Vector &selection_vector)
-    : translator_(translator), selection_vector_(selection_vector) {}
-*/
-
 // Generate the body of the vectorized scan
 void IndexScanTranslator::ScanConsumer::ProcessTuples(
     CodeGen &codegen, llvm::Value *tid_start, llvm::Value *tid_end,
@@ -538,8 +458,6 @@ void IndexScanTranslator::ScanConsumer::FilterRowsByPredicate(
                  tid_end, selection_vector, true};
 
   const auto *predicate = index_plan_.GetPredicate();
-  // First, check if the predicate is SIMDable
-  // LOG_DEBUG("Is Predicate SIMDable : %d", predicate->IsSIMDable());
   // Determine the attributes the predicate needs
   std::unordered_set<const planner::AttributeInfo *> used_attributes;
   predicate->GetUsedAttributes(used_attributes);
@@ -560,14 +478,14 @@ void IndexScanTranslator::ScanConsumer::FilterRowsByPredicate(
     codegen::Value valid_row = row.DeriveValue(codegen, *predicate);
 
     // Reify the boolean value since it may be NULL
-    PELOTON_ASSERT(valid_row.GetType().GetSqlType() == type::Boolean::Instance());
+    PELOTON_ASSERT(valid_row.GetType().GetSqlType() ==
+                   type::Boolean::Instance());
     llvm::Value *bool_val = type::Boolean::Instance().Reify(codegen, valid_row);
 
     // Set the validity of the row
     row.SetValidity(codegen, bool_val);
   });
 }
-  
 
 }  // namespace codegen
 }  // namespace peloton

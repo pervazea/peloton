@@ -58,13 +58,11 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
     if (expr_type == ExpressionType::COMPARE_LESSTHAN) right_open_ = true;
   }
 
-  /*
+  // what is the issue with this?
   oid_t index_id = GetIndexId();
   auto index = GetTable()->GetIndexWithOid(index_id);
   PELOTON_ASSERT(index != nullptr);
   SetIndexPredicate(index.get());
-  */
-  
   return;
 }
 
@@ -122,6 +120,62 @@ void IndexScanPlan::SetIndexPredicate(index::Index *index_p) {
                                                GetExprTypes());
 }
 
+#ifdef notdef  
+hash_t IndexScanPlan::Hash() const {
+  auto type = GetPlanNodeType();
+  hash_t hash = HashUtil::Hash(&type);
+  LOG_DEBUG("type hash: %lu", hash);
+
+  auto table_hash = GetTable()->Hash();
+  LOG_DEBUG("table hash: %lu", table_hash);
+
+  hash = HashUtil::CombineHashes(hash, GetTable()->Hash());
+  LOG_DEBUG(" --hash now: %lu", hash);
+
+  if (GetPredicate() != nullptr) {
+    auto pred_hash = GetPredicate()->Hash();
+    LOG_DEBUG("pred hash: %lu", pred_hash);  
+    hash = HashUtil::CombineHashes(hash, GetPredicate()->Hash());
+    LOG_DEBUG(" --hash now: %lu", hash);    
+  }
+
+  for (auto &column_id : GetColumnIds()) {
+    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&column_id));
+    LOG_DEBUG(" --hash now: %lu", hash);    
+  }
+
+  // hash the index id
+  hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&index_id_));
+  LOG_DEBUG(" --hash now: %lu", hash);
+
+  // hash the type of index scan
+  /* TODO: examine
+   * 1. Hash type of index scan
+   * 2. Hash predicate
+   * 3. This hashes only 1 conjunction. Is that all we support? Should
+   * assert that we only have one or properly handle as many as there are.
+   */
+  const index::ConjunctionScanPredicate *csp =
+      &(index_predicate_.GetConjunctionList()[0]);
+  if ( csp ) {
+    // TODO - is it valid for csp to be null?
+    auto is_point_query = csp->IsPointQuery();
+    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_point_query));
+    auto is_full_scan = csp->IsFullIndexScan();
+    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_full_scan));
+    LOG_DEBUG(" --hash now: %lu", hash);
+  }
+
+  auto is_update = IsForUpdate();
+  hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_update));
+  LOG_DEBUG(" --hash now: %lu", hash);            
+
+  hash = HashUtil::CombineHashes(hash, AbstractPlan::Hash());
+  LOG_DEBUG(" final hash: %lu", hash);
+  return hash;
+}  
+#endif /* notdef */
+  
 hash_t IndexScanPlan::Hash() const {
   auto type = GetPlanNodeType();
   hash_t hash = HashUtil::Hash(&type);

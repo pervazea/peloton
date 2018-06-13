@@ -61,7 +61,7 @@ static void CompileAndExecutePlan(
   // Check if we have a cached compiled plan already
   codegen::Query *query = codegen::QueryCache::Instance().Find(plan);
   if (query == nullptr) {
-    // LOG_INFO("not found in cache");
+    LOG_DEBUG("not found in cache");
     // Cached plan doesn't exist, let's compile the query
     codegen::QueryCompiler compiler;
     auto compiled_query = compiler.Compile(
@@ -167,14 +167,13 @@ void PlanExecutor::ExecutePlan(
   bool codegen_enabled =
       settings::SettingsManager::GetBool(settings::SettingId::codegen);
 
-  LOG_INFO("%s", plan->GetInfo().c_str());
-
+  LOG_DEBUG("%s", plan->GetInfo().c_str());
   try {
     if (codegen_enabled && codegen::QueryCompiler::IsSupported(*plan)) {
-      LOG_INFO("compile and execute");
+      LOG_DEBUG("compile and execute");
       CompileAndExecutePlan(plan, txn, params, on_complete);
     } else {
-      LOG_INFO("interpret");
+      LOG_DEBUG("interpret");
       InterpretPlan(plan, txn, params, result_format, on_complete);
     }
   } catch (Exception &e) {
@@ -390,7 +389,7 @@ executor::AbstractExecutor *BuildExecutorTree(
  */
 void CleanExecutorTree(executor::AbstractExecutor *root) {
   if (root == nullptr) return;
-
+ 
   // Recurse
   auto children = root->GetChildren();
   for (auto child : children) {

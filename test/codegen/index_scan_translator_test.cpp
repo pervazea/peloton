@@ -165,7 +165,7 @@ class IndexScanTranslatorTest : public PelotonCodeGenTest {
 
   storage::DataTable *GetTableWithIndex() const {
     //return *GetDatabase().GetTableWithName(table_name_);
-    auto *catalog = catalog::Catalog::GetInstance();        
+    auto *catalog = catalog::Catalog::GetInstance();
     auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
     auto *txn = txn_manager.BeginTransaction();
     auto table = catalog->GetTableWithName(test_db_name,

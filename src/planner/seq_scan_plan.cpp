@@ -247,7 +247,7 @@ int SeqScanPlan::SerializeSize() const {
 }
 
 void SeqScanPlan::SetParameterValues(std::vector<type::Value> *values) {
-  LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);
+  // LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);
   LOG_TRACE("Setting parameter values in Sequential Scan");
 
   for (auto &child_plan : GetChildren()) {
@@ -256,7 +256,7 @@ void SeqScanPlan::SetParameterValues(std::vector<type::Value> *values) {
 }
 
 hash_t SeqScanPlan::Hash() const {
-  LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);  
+  //LOG_DEBUG("Enter %s", __PRETTY_FUNCTION__);  
   auto type = GetPlanNodeType();
   hash_t hash = HashUtil::Hash(&type);
 

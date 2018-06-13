@@ -58,6 +58,13 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
     if (expr_type == ExpressionType::COMPARE_LESSTHAN) right_open_ = true;
   }
 
+  /*
+  oid_t index_id = GetIndexId();
+  auto index = GetTable()->GetIndexWithOid(index_id);
+  PELOTON_ASSERT(index != nullptr);
+  SetIndexPredicate(index.get());
+  */
+  
   return;
 }
 
@@ -113,6 +120,96 @@ void IndexScanPlan::SetIndexPredicate(index::Index *index_p) {
                                                GetValues(),
                                                GetKeyColumnIds(),
                                                GetExprTypes());
+}
+
+hash_t IndexScanPlan::Hash() const {
+  auto type = GetPlanNodeType();
+  hash_t hash = HashUtil::Hash(&type);
+
+  hash = HashUtil::CombineHashes(hash, GetTable()->Hash());
+  if (GetPredicate() != nullptr) {
+    hash = HashUtil::CombineHashes(hash, GetPredicate()->Hash());
+  }
+
+  for (auto &column_id : GetColumnIds()) {
+    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&column_id));
+  }
+
+  // hash the index id
+  hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&index_id_));
+
+  // hash the type of index scan
+  /* TODO: examine
+   * 1. Hash type of index scan
+   * 2. Hash predicate
+   * 3. This hashes only 1 conjunction. Is that all we support? Should
+   * assert that we only have one or properly handle as many as there are.
+   */
+  const index::ConjunctionScanPredicate *csp =
+      &(index_predicate_.GetConjunctionList()[0]);
+  if ( csp ) {
+    // TODO - is it valid for csp to be null?
+    auto is_point_query = csp->IsPointQuery();
+    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_point_query));
+    auto is_full_scan = csp->IsFullIndexScan();
+    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_full_scan));
+  }
+
+  auto is_update = IsForUpdate();
+  hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_update));
+
+  return HashUtil::CombineHashes(hash, AbstractPlan::Hash());
+}
+
+bool IndexScanPlan::operator==(const AbstractPlan &rhs) const {
+  if (GetPlanNodeType() != rhs.GetPlanNodeType())
+    return false;
+
+  auto &other = static_cast<const planner::IndexScanPlan &>(rhs);
+  auto *table = GetTable();
+  auto *other_table = other.GetTable();
+  PELOTON_ASSERT(table && other_table);
+  if (*table != *other_table) return false;
+
+  //if (GetIndex()->GetOid() != other.GetIndex()->GetOid()) return false;
+  if (index_id_ != other.index_id_)
+    return false;
+
+  // Predicate
+  auto *pred = GetPredicate();
+  auto *other_pred = other.GetPredicate();
+
+  if ((pred == nullptr && other_pred != nullptr) ||
+      (pred != nullptr && other_pred == nullptr))
+    return false;
+  
+  if (pred && (*pred != *other_pred))
+    return false;
+
+  // Column Ids
+  size_t column_id_count = GetColumnIds().size();
+  if (column_id_count != other.GetColumnIds().size())
+    return false;
+  for (size_t i = 0; i < column_id_count; i++) {
+    if (GetColumnIds()[i] != other.GetColumnIds()[i])
+      return false;
+  }
+
+  const index::ConjunctionScanPredicate *csp =
+      &(index_predicate_.GetConjunctionList()[0]);
+  const index::ConjunctionScanPredicate *other_csp =
+      &(other.GetIndexPredicate().GetConjunctionList()[0]);
+  
+  if (csp->IsPointQuery() != other_csp->IsPointQuery())
+    return false;
+  
+  if (csp->IsFullIndexScan() != other_csp->IsFullIndexScan())
+    return false;
+
+  if (IsForUpdate() != other.IsForUpdate())
+    return false;
+
+  return AbstractPlan::operator==(rhs);
 }
 
 }  // namespace planner

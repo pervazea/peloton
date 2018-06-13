@@ -171,9 +171,17 @@ class IndexScanPlan : public AbstractScan {
 
     IndexScanDesc desc(index_id_, key_column_ids_, expr_types_, values_,
                        new_runtime_keys);
+
     IndexScanPlan *new_plan = new IndexScanPlan(
         GetTable(), GetPredicate()->Copy(), GetColumnIds(), desc, false);
     return std::unique_ptr<AbstractPlan>(new_plan);
+  }
+
+  hash_t Hash() const override;
+
+  bool operator==(const AbstractPlan &rhs) const override;
+  bool operator!=(const AbstractPlan &rhs) const override {
+    return !(*this == rhs);
   }
 
   virtual void VisitParameters(
@@ -211,6 +219,7 @@ class IndexScanPlan : public AbstractScan {
 
   const std::vector<expression::AbstractExpression *> runtime_keys_;
 
+  // TODO: correct comment
   // Currently we just support single conjunction predicate
   //
   // In the future this might be extended into an array of conjunctive

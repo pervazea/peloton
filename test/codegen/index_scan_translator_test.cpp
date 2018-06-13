@@ -64,10 +64,11 @@ class IndexScanTranslatorTest : public PelotonCodeGenTest {
     std::unique_ptr<catalog::Schema> schema{new catalog::Schema(cols)};
 
     // Insert table in catalog
-    catalog->CreateTable(test_db_name, table_name_, std::move(schema), txn);
+    catalog->CreateTable(test_db_name, DEFAULT_SCHEMA_NAME, table_name_,
+                         std::move(schema), txn);
     txn_manager.CommitTransaction(txn);
 
-    auto &table = GetTableWithIndex();
+    storage::DataTable *table = GetTableWithIndex();
 
     // add index
     // This holds column ID in the underlying table that are being indexed
@@ -75,7 +76,7 @@ class IndexScanTranslatorTest : public PelotonCodeGenTest {
 
     // This holds schema of the underlying table, which stays all the same
     // for all indices on the same underlying table
-    auto tuple_schema = table.GetSchema();
+    auto tuple_schema = table->GetSchema();
 
     // This points to the schema of only columns indiced by the index
     // This is basically selecting tuple_schema() with key_attrs as index
@@ -107,7 +108,7 @@ class IndexScanTranslatorTest : public PelotonCodeGenTest {
     std::shared_ptr<index::Index> pkey_index(
         index::IndexFactory::GetIndex(index_metadata));
 
-    table.AddIndex(pkey_index);
+    table->AddIndex(pkey_index);
 
     // populate the table
     txn = txn_manager.BeginTransaction();
@@ -148,7 +149,7 @@ class IndexScanTranslatorTest : public PelotonCodeGenTest {
 
       ItemPointer *index_entry_ptr = nullptr;
       ItemPointer tuple_slot_id =
-          table.InsertTuple(&tuple, txn, &index_entry_ptr);
+          table->InsertTuple(&tuple, txn, &index_entry_ptr);
 
       auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
       txn_manager.PerformInsert(txn, tuple_slot_id, index_entry_ptr);
@@ -162,8 +163,17 @@ class IndexScanTranslatorTest : public PelotonCodeGenTest {
 
   oid_t TestTableId() { return test_table_oids[0]; }
 
-  storage::DataTable &GetTableWithIndex() const {
-    return *GetDatabase().GetTableWithName(table_name_);
+  storage::DataTable *GetTableWithIndex() const {
+    //return *GetDatabase().GetTableWithName(table_name_);
+    auto *catalog = catalog::Catalog::GetInstance();        
+    auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+    auto *txn = txn_manager.BeginTransaction();
+    auto table = catalog->GetTableWithName(test_db_name,
+                                           DEFAULT_SCHEMA_NAME,
+                                           table_name_,
+                                           txn);
+    txn_manager.CommitTransaction(txn);
+    return table;
   }
 
   uint32_t GetTestTableSize() { return test_table_size_; }
@@ -187,7 +197,7 @@ TEST_F(IndexScanTranslatorTest, IndexPointQuery) {
   // SELECT a, b, c, d FROM table where a = x;
   //
 
-  auto &data_table = GetTableWithIndex();
+  storage::DataTable *data_table = GetTableWithIndex();
 
   // Column ids to be added to logical tile after scan.
   std::vector<oid_t> column_ids({0, 1, 2, 3});
@@ -198,7 +208,7 @@ TEST_F(IndexScanTranslatorTest, IndexPointQuery) {
   //===--------------------------------------------------------------------===//
   // ATTR 0 == key
   //===--------------------------------------------------------------------===//
-  auto index = data_table.GetIndex(0);
+  auto index = data_table->GetIndex(0);
   std::vector<oid_t> key_column_ids;
   std::vector<ExpressionType> expr_types;
   std::vector<type::Value> values;
@@ -223,7 +233,7 @@ TEST_F(IndexScanTranslatorTest, IndexPointQuery) {
   
 
   // Create plan node.
-  planner::IndexScanPlan scan(&data_table, a_eq_0.release(), column_ids,
+  planner::IndexScanPlan scan(data_table, a_eq_0.release(), column_ids,
                               index_scan_desc);
   
   // Do binding
@@ -246,7 +256,7 @@ TEST_F(IndexScanTranslatorTest, IndexRangeScan) {
   // SELECT a, b, c, d FROM table where a = x;
   //
 
-  auto &data_table = GetTableWithIndex();
+  storage::DataTable *data_table = GetTableWithIndex();
 
   // Column ids to be added to logical tile after scan.
   std::vector<oid_t> column_ids({0, 1, 2, 3});
@@ -261,7 +271,7 @@ TEST_F(IndexScanTranslatorTest, IndexRangeScan) {
   //===--------------------------------------------------------------------===//
   // ATTR 0 >= key1 and ATTR 0 <= key2
   //===--------------------------------------------------------------------===//
-  auto index = data_table.GetIndex(0);
+  auto index = data_table->GetIndex(0);
   std::vector<oid_t> key_column_ids;
   std::vector<ExpressionType> expr_types;
   std::vector<type::Value> values;
@@ -282,7 +292,7 @@ TEST_F(IndexScanTranslatorTest, IndexRangeScan) {
   expression::AbstractExpression *predicate = nullptr;
 
   // Create plan node.
-  planner::IndexScanPlan scan(&data_table, predicate, column_ids,
+  planner::IndexScanPlan scan(data_table, predicate, column_ids,
                               index_scan_desc);
 
   // Do binding
@@ -315,12 +325,12 @@ TEST_F(IndexScanTranslatorTest, IndexFullScan) {
   // SELECT a, b, c, d FROM table;
   //
 
-  auto &data_table = GetTableWithIndex();
+  auto data_table = GetTableWithIndex();
 
   // Column ids to be added to logical tile after scan.
   std::vector<oid_t> column_ids({0, 1, 2, 3});
 
-  auto index = data_table.GetIndex(0);
+  auto index = data_table->GetIndex(0);
   std::vector<oid_t> key_column_ids;
   std::vector<ExpressionType> expr_types;
   std::vector<type::Value> values;
@@ -333,7 +343,7 @@ TEST_F(IndexScanTranslatorTest, IndexFullScan) {
   expression::AbstractExpression *predicate = nullptr;
 
   // Create plan node.
-  planner::IndexScanPlan scan(&data_table, predicate, column_ids,
+  planner::IndexScanPlan scan(data_table, predicate, column_ids,
                               index_scan_desc);
 
   // Do binding

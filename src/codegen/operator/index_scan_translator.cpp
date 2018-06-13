@@ -170,10 +170,13 @@ IndexScanTranslator::IndexScanTranslator(
   oid_t index_id = index_scan_.GetIndexId();
   auto index = index_scan_.GetTable()->GetIndexWithOid(index_id);
   PELOTON_ASSERT(index != nullptr);
+
+  // Set the conjunction scan predicate into the index scan plan.  
+  // TODO: fix, const_cast? Determine if there is a better place
+  // for keeping the CSP, e.g. move csp to query_state? c.f. hash join
+  const_cast<planner::IndexScanPlan &>(index_scan_).SetIndexPredicate(
+    index.get());
   
-  // Set the conjunction scan predicate into the index scan plan.
-  // TODO: fix, const_cast. Move csp to query_state c.f. hash join
-  const_cast<planner::IndexScanPlan &>(index_scan_).SetIndexPredicate(index.get());
   // debugging
   // std::vector<ItemPointer *> tuple_location_ptrs;
   // index->ScanAllKeys(tuple_location_ptrs);

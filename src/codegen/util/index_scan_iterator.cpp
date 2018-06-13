@@ -32,19 +32,19 @@ IndexScanIterator::IndexScanIterator(index::Index *index,
     is_point_query_ = true;
     is_full_scan_ = false;
     point_key_p_ = point_key_p;
-    //LOG_INFO("point scan");    
+    LOG_INFO("point scan");    
   } else if (low_key_p != nullptr && high_key_p != nullptr) {
     // range scan
     is_point_query_ = false;
     is_full_scan_ = false;
     low_key_p_ = low_key_p;
     high_key_p_ = high_key_p;
-    //LOG_INFO("range scan");    
+    LOG_INFO("range scan");    
   } else {
     // full scan
     is_point_query_ = false;
     is_full_scan_ = true;
-    //LOG_INFO("full scan");    
+    LOG_INFO("full scan");    
   }
 }
 
@@ -56,8 +56,8 @@ void IndexScanIterator::DoScan() {
   } else {
     index_->CodeGenRangeScan(low_key_p_, high_key_p_, result_);
   }
-  // LOG_INFO("result size = %lu\n", result_.size());
-  // LogDoScanResults();
+  LOG_INFO("result size = %lu\n", result_.size());
+  LogDoScanResults();
 
   // TODO: fix whatever implementation deficiency this comment implies
   // TODO:
@@ -198,13 +198,11 @@ void IndexScanIterator::UpdateTupleWithBoolean(
 void IndexScanIterator::LogDoScanResults() {
   LOG_INFO("\n");
   LOG_INFO("\nDoScan: result size = %lu\n", result_.size());
-  /*
   for (uint32_t i=0; i<result_.size(); i++) {
     LOG_INFO("%u: block: %u offset %u",
              i, result_[i]->block, result_[i]->offset);
   }
   LOG_INFO("\n");
-  */
 }
     
 

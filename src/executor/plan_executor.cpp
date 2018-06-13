@@ -53,10 +53,15 @@ static void CompileAndExecutePlan(
   executor::ExecutorContext executor_context{
       txn, codegen::QueryParameters(*plan, params)};
 
+  // FIX
+  // Looking up the query in the cache, requires that the csp
+  // be attached to the plan. This fails, as the csp is attached during
+  // the compilation phase. 
+
   // Check if we have a cached compiled plan already
   codegen::Query *query = codegen::QueryCache::Instance().Find(plan);
   if (query == nullptr) {
-    LOG_INFO("not found in cache");
+    // LOG_INFO("not found in cache");
     // Cached plan doesn't exist, let's compile the query
     codegen::QueryCompiler compiler;
     auto compiled_query = compiler.Compile(
@@ -67,7 +72,7 @@ static void CompileAndExecutePlan(
 
     // Insert the compiled plan into the cache
     codegen::QueryCache::Instance().Add(plan, std::move(compiled_query));
-  }
+  } 
 
   // Execute the query!
   query->Execute(executor_context, consumer);
@@ -162,10 +167,14 @@ void PlanExecutor::ExecutePlan(
   bool codegen_enabled =
       settings::SettingsManager::GetBool(settings::SettingId::codegen);
 
+  LOG_INFO("%s", plan->GetInfo().c_str());
+
   try {
     if (codegen_enabled && codegen::QueryCompiler::IsSupported(*plan)) {
+      LOG_INFO("compile and execute");
       CompileAndExecutePlan(plan, txn, params, on_complete);
     } else {
+      LOG_INFO("interpret");
       InterpretPlan(plan, txn, params, result_format, on_complete);
     }
   } catch (Exception &e) {

@@ -54,6 +54,12 @@ void UpdatePlan::PerformBinding(BindingContext &binding_context) {
 
   auto *scan = static_cast<planner::AbstractScan *>(children[0].get());
   auto &col_ids = scan->GetColumnIds();
+
+  // temporary fix for issue #1394
+  if (ais_.size() > 0) {
+    ais_.clear();
+  }
+  
   for (oid_t col_id = 0; col_id < col_ids.size(); col_id++) {
     ais_.push_back(input_context.Find(col_id));
   }

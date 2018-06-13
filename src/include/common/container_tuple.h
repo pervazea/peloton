@@ -272,6 +272,13 @@ class ContainerTuple<storage::TileGroup> : public AbstractTuple {
     container_->SetValue(val, tuple_id_, col_id);
   }
 
+  size_t GetLength(oid_t column_id) const {
+    PELOTON_ASSERT(container_ != nullptr);
+    
+    const auto *schema = container_->GetAbstractTable()->GetSchema();
+    return schema->GetLength(column_id);
+  } 
+  
   char *GetData() const override {
     // NOTE: We can't get a tuple from a tilegroup or logical tile without
     //       materializing it. So, this must not be used.

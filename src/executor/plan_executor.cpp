@@ -36,6 +36,7 @@ static void CompileAndExecutePlan(
     std::shared_ptr<planner::AbstractPlan> plan,
     concurrency::TransactionContext *txn,
     const std::vector<type::Value> &params,
+    const std::vector<int> &result_format,
     std::function<void(executor::ExecutionResult, std::vector<ResultValue> &&)>
         on_complete) {
   LOG_TRACE("Compiling and executing query ...");
@@ -87,9 +88,33 @@ static void CompileAndExecutePlan(
   for (const auto &tuple : consumer.GetOutputTuples()) {
     for (uint32_t i = 0; i < tuple.tuple_.size(); i++) {
       auto column_val = tuple.GetValue(i);
-      auto str = column_val.IsNull() ? "" : column_val.ToString();
-      LOG_TRACE("column content: [%s]", str.c_str());
-      values.push_back(std::move(str));
+      if (result_format[i] == 0) {
+        // text format
+        auto str = column_val.IsNull() ? "" : column_val.ToString();
+        values.push_back(std::move(str));
+      } else if (result_format[i] == 1) {
+        // binary format
+        size_t col_length;
+        bool is_inlined = false;
+        type::TypeId col_type = tuple.tuple_[i].GetElementType();
+        if (col_type == type::TypeId::VARBINARY) {
+          col_length = tuple.tuple_[i].GetLength();
+        } else {
+          col_length = sizeof(col_type);
+        }
+        char *val_binary = new char[col_length];
+        //LOG_INFO("column content: [%s]", str.c_str());
+        //LOG_INFO("column type desired %d", result_format[i]);
+        //LOG_INFO("column length %lu", col_length);
+        column_val.SerializeTo(val_binary, is_inlined, nullptr);
+        // hton
+        for (size_t i = 0; i < (col_length >> 1); ++i) {
+          auto tmp_char = val_binary[i];
+          val_binary[i] = val_binary[col_length - i - 1];
+          val_binary[col_length - i - 1] = tmp_char;
+        }
+        values.push_back(std::string(val_binary, col_length));
+      }
     }
   }
 
@@ -171,7 +196,7 @@ void PlanExecutor::ExecutePlan(
   try {
     if (codegen_enabled && codegen::QueryCompiler::IsSupported(*plan)) {
       LOG_DEBUG("compile and execute");
-      CompileAndExecutePlan(plan, txn, params, on_complete);
+      CompileAndExecutePlan(plan, txn, params, result_format, on_complete);
     } else {
       LOG_DEBUG("interpret");
       InterpretPlan(plan, txn, params, result_format, on_complete);

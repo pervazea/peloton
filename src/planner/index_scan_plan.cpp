@@ -24,20 +24,23 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
                              const std::vector<oid_t> &column_ids,
                              const IndexScanDesc &index_scan_desc,
                              bool for_update_flag)
-    : index_id_(index_scan_desc.index_id),
-      column_ids_(column_ids),
-      key_column_ids_(std::move(index_scan_desc.tuple_column_id_list)),
-      expr_types_(std::move(index_scan_desc.expr_list)),
-      values_with_params_(std::move(index_scan_desc.value_list)),
-      runtime_keys_(std::move(index_scan_desc.runtime_key_list)) {
+  : AbstractScan(table, nullptr, column_ids, false),
+    index_id_(index_scan_desc.index_id),
+    // column_ids_(column_ids),
+    key_column_ids_(std::move(index_scan_desc.tuple_column_id_list)),
+    expr_types_(std::move(index_scan_desc.expr_list)),
+    values_with_params_(std::move(index_scan_desc.value_list)),
+    runtime_keys_(std::move(index_scan_desc.runtime_key_list)) {
   LOG_TRACE("Creating an Index Scan Plan");
 
   if (for_update_flag == true) {
     SetForUpdateFlag(true);
   }
 
-  SetTargetTable(table);
+  // SetTargetTable(table);
 
+  // Is this redundant also? If we set the predicate via the
+  // AbstractScan constructor?
   if (predicate != NULL) {
     SetPredicate(predicate);
   }
@@ -58,7 +61,7 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
     if (expr_type == ExpressionType::COMPARE_LESSTHAN) right_open_ = true;
   }
 
-  // what is the issue with this?
+  // set the index predicate (conjuction scan predicate)
   oid_t index_id = GetIndexId();
   auto index = GetTable()->GetIndexWithOid(index_id);
   PELOTON_ASSERT(index != nullptr);
@@ -93,6 +96,15 @@ void IndexScanPlan::SetParameterValues(std::vector<type::Value> *values) {
               .CastAs(GetTable()->GetSchema()->GetColumn(column_id).GetType());
     }
   }
+
+  // Also bind values to index scan predicate object
+  //
+  // NOTE: This could only be called by one thread at a time
+
+  oid_t index_id = GetIndexId();
+  auto index = GetTable()->GetIndexWithOid(index_id);
+  PELOTON_ASSERT(index != nullptr);
+  index_predicate_.LateBindValues(index.get(), *values);
 
   for (auto &child_plan : GetChildren()) {
     child_plan->SetParameterValues(values);

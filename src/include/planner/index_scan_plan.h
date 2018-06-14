@@ -195,7 +195,7 @@ class IndexScanPlan : public AbstractScan {
 
   // A list of column IDs involved in the index scan no matter whether
   // it is indexed or not (i.e. select statement)
-  const std::vector<oid_t> column_ids_;
+  // const std::vector<oid_t> column_ids_;
 
   // A list of column IDs involved in the index scan that are indexed by
   // the index choen inside the optimizer

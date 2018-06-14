@@ -113,7 +113,7 @@ ProcessResult PostgresProtocolHandler::ExecQueryMessage(
   std::string query;
   std::string error_message;
   PacketGetString(pkt, pkt->len, query);
-  LOG_TRACE("Execute query: %s", query.c_str());
+  LOG_DEBUG("Execute query: %s", query.c_str());
   std::unique_ptr<parser::SQLStatementList> sql_stmt_list;
   try {
     auto &peloton_parser = parser::PostgresParser::GetInstance();
@@ -322,7 +322,7 @@ void PostgresProtocolHandler::ExecParseMessage(InputPacket *pkt) {
   std::unique_ptr<parser::SQLStatementList> sql_stmt_list;
   QueryType query_type = QueryType::QUERY_OTHER;
   try {
-    LOG_TRACE("%s, %s", statement_name.c_str(), query.c_str());
+    LOG_DEBUG("%s, %s", statement_name.c_str(), query.c_str());
     auto &peloton_parser = parser::PostgresParser::GetInstance();
     sql_stmt_list = peloton_parser.BuildParseTree(query);
     if (sql_stmt_list.get() != nullptr && !sql_stmt_list->is_valid) {
@@ -368,7 +368,7 @@ void PostgresProtocolHandler::ExecParseMessage(InputPacket *pkt) {
                         traffic_cop_->GetErrorMessage()}});
     return;
   }
-  LOG_TRACE("PrepareStatement[%s] => %s", statement_name.c_str(),
+  LOG_DEBUG("PrepareStatement[%s] => %s", statement_name.c_str(),
             query.c_str());
   // Read number of params
   int num_params = PacketGetInt(pkt, 2);

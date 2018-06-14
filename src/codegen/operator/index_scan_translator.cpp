@@ -409,7 +409,7 @@ void IndexScanTranslator::ScanConsumer::SetupRowBatch(
   // 2. Add the attribute accessors into the row batch
   for (oid_t col_idx = 0; col_idx < output_col_ids.size(); col_idx++) {
     auto *attribute = ais[output_col_ids[col_idx]];
-    LOG_TRACE("Adding attribute '%s.%s' (%p) into row batch",
+    LOG_DEBUG("Adding attribute '%s.%s' (%p) into row batch",
               index_plan_.GetTable()->GetName().c_str(),
               attribute->name.c_str(),
               attribute);

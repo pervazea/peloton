@@ -423,7 +423,7 @@ class ConjunctionScanPredicate {
             index_p, value_list[index_pair.first], low_key_p_, i);
 
         if (bind_ret != INVALID_OID) {
-          LOG_INFO("Low key for column %u needs late binding!", i);
+          //LOG_INFO("Low key for column %u needs late binding!", i);
 
           // The first element is index, and the second element
           // is the return value, which is the future index in the
@@ -444,7 +444,7 @@ class ConjunctionScanPredicate {
               index_p, value_list[index_pair.second], high_key_p_, i);
 
           if (bind_ret != INVALID_OID) {
-            LOG_INFO("High key for column %u needs late binding!", i);
+            //LOG_INFO("High key for column %u needs late binding!", i);
 
             // The first element is index, and the second element
             // is the return value, which is the future index in the
@@ -473,20 +473,22 @@ class ConjunctionScanPredicate {
     PELOTON_ASSERT(full_index_scan_ == false);
 
     // Need to check there is not out of bound access
-    LOG_INFO("value list length = %lu", value_list.size());
+    //LOG_INFO("value list length = %lu", value_list.size());
 
     // For each item <key column index, value list index> do the binding job
     for (auto &bind_item : key_bind_list) {
 
-      LOG_INFO("bind first: %d; second: %d", bind_item.first,
+      /*
+      LOG_INFO("bind first: %d; second: %d", bind_item.first, 
                 bind_item.second);
       LOG_INFO("bind value: %s",
                 value_list[bind_item.second].GetInfo().c_str());
+      */
 
       oid_t bind_ret = BindValueToIndexKey(
           index_p, value_list[bind_item.second], index_key_p, bind_item.first);
 
-      LOG_INFO("bind OK");
+      //LOG_INFO("bind OK");
 
       // This could not be other values since all values must be
       // valid during the binding stage

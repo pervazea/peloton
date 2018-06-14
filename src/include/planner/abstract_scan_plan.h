@@ -38,10 +38,10 @@ class AbstractScan : public AbstractPlan {
   AbstractScan(storage::DataTable *table,
                expression::AbstractExpression *predicate,
                const std::vector<oid_t> &column_ids, bool parallel)
-      : target_table_(table),
-        predicate_(predicate),
-        column_ids_(column_ids),
-        parallel_(parallel) {}
+    : column_ids_(column_ids),
+      target_table_(table),
+      predicate_(predicate),
+      parallel_(parallel) {}
 
   const expression::AbstractExpression *GetPredicate() const {
     return predicate_.get();
@@ -68,6 +68,9 @@ class AbstractScan : public AbstractPlan {
 
   bool IsParallel() const { return parallel_; }
 
+  // FIX - should be private
+  std::vector<oid_t> column_ids_;    
+
  protected:
   void SetTargetTable(storage::DataTable *table) { target_table_ = table; }
 
@@ -91,7 +94,7 @@ class AbstractScan : public AbstractPlan {
   std::unique_ptr<expression::AbstractExpression> predicate_;
 
   // Columns from tile group to be added to logical tile output
-  std::vector<oid_t> column_ids_;
+  // std::vector<oid_t> column_ids_;
   std::vector<AttributeInfo> attributes_;
 
   // Are the tuples produced by this plan intended for update?

@@ -31,8 +31,13 @@ void AbstractScan::PerformBinding(BindingContext &binding_context) {
 
     // Fill up the column IDs if empty
     if (GetColumnIds().size() == 0) {
+      LOG_DEBUG("column_ids_.size() = %lu", GetColumnIds().size());
+      LOG_DEBUG("target column size: %lu",
+                target_table_->GetSchema()->GetColumnCount());
+      
       column_ids_.resize(target_table_->GetSchema()->GetColumnCount());
       std::iota(column_ids_.begin(), column_ids_.end(), 0);
+      LOG_DEBUG("column_ids_.size() = %lu", GetColumnIds().size());
     }
 
     // Collect _all_ table columns

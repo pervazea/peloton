@@ -40,6 +40,7 @@ static void CompileAndExecutePlan(
     std::function<void(executor::ExecutionResult, std::vector<ResultValue> &&)>
         on_complete) {
   LOG_TRACE("Compiling and executing query ...");
+  LOG_DEBUG("%s", plan->GetInfo().c_str());  
 
   // Perform binding
   planner::BindingContext context;

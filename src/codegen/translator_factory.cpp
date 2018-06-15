@@ -75,6 +75,8 @@ std::unique_ptr<OperatorTranslator> TranslatorFactory::CreateTranslator(
     case PlanNodeType::INDEXSCAN: {
       auto &scan = static_cast<const planner::IndexScanPlan &>(plan_node);
       translator = new IndexScanTranslator(scan, context, pipeline);
+      break;
+    }
     case PlanNodeType::CSVSCAN: {
       auto &scan = static_cast<const planner::CSVScanPlan &>(plan_node);
       translator = new CSVScanTranslator(scan, context, pipeline);

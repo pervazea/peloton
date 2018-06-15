@@ -280,6 +280,7 @@ util::IndexScanIterator *iterator = new util::IndexScanIterator(
 void RuntimeFunctions::DeleteIterator(util::IndexScanIterator *iterator) {
   PELOTON_ASSERT(iterator != nullptr);
   delete iterator;
+}
   
 void RuntimeFunctions::ThrowInvalidInputStringException() {
   throw std::runtime_error("ERROR: invalid input string");

@@ -92,7 +92,7 @@ class RuntimeFunctions {
    */
   static void GetTileGroupLayout(const storage::TileGroup *tile_group,
                                  ColumnLayoutInfo *infos, uint32_t num_cols);
-
+  
   /**
    * Execute a parallel scan over the given table in the given database.
    *
@@ -121,6 +121,12 @@ class RuntimeFunctions {
       void *query_state, executor::ExecutorContext::ThreadStates &thread_states,
       void (*work_func)(void *, void *));
 
+  //////////////////////////////////////////////////////////////////////////////
+  ///
+  /// Exception related functions
+  ///
+  //////////////////////////////////////////////////////////////////////////////
+
   /**
    * Throw a divide-by-zero exception. This function doesn't return.
    */
@@ -137,6 +143,8 @@ class RuntimeFunctions {
                                               int64_t high_key_p);
 
   static void DeleteIterator(util::IndexScanIterator *iterator);
+
+  static void ThrowInvalidInputStringException();
 };
 
 }  // namespace codegen

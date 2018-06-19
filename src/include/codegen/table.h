@@ -13,9 +13,11 @@
 #pragma once
 
 #include "codegen/codegen.h"
+#include "codegen/compilation_context.h"
 #include "codegen/scan_callback.h"
 #include "codegen/tile_group.h"
 #include "index/scan_optimizer.h"
+#include "planner/index_scan_plan.h"
 #include "type/value.h"
 
 namespace peloton {
@@ -25,6 +27,8 @@ class DataTable;
 }  // namespace storage
 
 namespace codegen {
+
+  //class CompilationContext; 
 
 //===----------------------------------------------------------------------===//
 // This class the main entry point for any code generation that requires
@@ -53,18 +57,20 @@ class Table {
   // The table pointer
   // is provided as the second argument. The scan consumer (third argument)
   // should be notified when ready to generate the scan loop body.
-  void GenerateIndexScan(CodeGen &codegen, llvm::Value *table_ptr,
+  void GenerateIndexScan(CodeGen &codegen,
+                         CompilationContext &context,
+                         llvm::Value *table_ptr,
                          uint32_t batch_size, ScanCallback &consumer,
                          llvm::Value *predicate_array,
                          size_t num_predicates,
                          const index::ConjunctionScanPredicate *csp,
-                         llvm::Value *index_ptr) const;
-
-  /*
+                         llvm::Value *index_ptr,
+                         const planner::IndexScanPlan &index_scan) const;
+  
   void SetIndexPredicate(CodeGen &codegen,
+                         CompilationContext &context,
                          llvm::Value *iterator_ptr,
                          const planner::IndexScanPlan &index_scan) const;
-  */
 
   /// Given a table instance, return the number of tile groups in the table.
   llvm::Value *GetTileGroupCount(CodeGen &codegen,

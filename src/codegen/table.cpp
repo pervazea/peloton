@@ -164,13 +164,15 @@ void Table::GenerateScan(CodeGen &codegen, llvm::Value *table_ptr,
 //
 // @endcode
 void Table::GenerateIndexScan(CodeGen &codegen,
+                              CompilationContext &context,
                               llvm::Value *table_ptr,
                               uint32_t batch_size,
                               ScanCallback &consumer,
                               llvm::Value *predicate_ptr,
                               size_t num_predicates,
                               const index::ConjunctionScanPredicate *csp,
-                              llvm::Value *index_ptr) const {
+                              llvm::Value *index_ptr,
+                              const planner::IndexScanPlan &index_scan) const {
   
   // Allocate some space for the column layouts
   const auto num_columns =
@@ -215,7 +217,7 @@ void Table::GenerateIndexScan(CodeGen &codegen,
                  {index_ptr, point_key, low_key, high_key});
 
   // before doing scan, update the tuple with parameter cache!
-  // SetIndexPredicate(codegen, iterator_ptr);
+  SetIndexPredicate(codegen, context, iterator_ptr, index_scan);
 
   // DoScan extracts data from the index and keeps the results, to be
   // retrieved via subsequent calls to the proxy
@@ -259,27 +261,6 @@ void Table::GenerateIndexScan(CodeGen &codegen,
     // done with this tuple
     consumer.TileGroupFinish(codegen, tile_group_ptr);    
 
-    /*
-    //??
-    codegen.Call(
-        RuntimeFunctionsProxy::GetTileGroupLayout,
-        {tile_group_ptr, column_layouts, codegen.Const32(num_columns)});
-
-    // tile_group_.ScanTileOffset(sel_vec):
-
-    // to fix
-    // Inform the consumer that we're starting iteration over the tile group
-    consumer.TileGroupStart(codegen, tile_group_id, tile_group_ptr);
-
-    // Generate the scan cover over the given tile group
-    tile_group_.GenerateTidScan(codegen, tile_group_ptr, column_layouts,
-                                batch_size, consumer);
-
-    // Inform the consumer that we've finished iteration over the tile group
-    consumer.TileGroupFinish(codegen, tile_group_ptr);
-    // end to fix
-    */
-    
     // Move to next result item from the index
     result_idx = codegen->CreateAdd(result_idx, codegen.Const64(1));
     
@@ -288,22 +269,25 @@ void Table::GenerateIndexScan(CodeGen &codegen,
   }
 }
 
-/*
-// replace index_scan with predicate, or pull out entirely and
-// do check externally  
+// rename. This updates the index predicate with the values
+// from the current query. UpdateIndexPredicateValues
 void Table::SetIndexPredicate(CodeGen &codegen,
+                              CompilationContext &context,
                               llvm::Value *iterator_ptr,
                               const planner::IndexScanPlan &index_scan) const {
   std::vector<const planner::AttributeInfo *> where_clause_attributes;
   std::vector<const expression::AbstractExpression *>
     constant_value_expressions;
   std::vector<ExpressionType> comparison_type;
+
+  // ?? Is this correct? We want to proceed if there is an index
+  // predicate.
   // get predicate from abstract_scan_plan
   const auto *predicate = index_scan.GetPredicate();
   if (predicate == nullptr) {
     return;
   }
-  auto &context = GetCompilationContext();
+
   const auto &parameter_cache = context.GetParameterCache();
   const QueryParametersMap &parameters_map =
     parameter_cache.GetQueryParametersMap();
@@ -311,10 +295,12 @@ void Table::SetIndexPredicate(CodeGen &codegen,
   predicate->GetUsedAttributesInPredicateOrder(where_clause_attributes,
                                                constant_value_expressions);
   predicate->GetComparisonTypeInPredicateOrder(comparison_type);
+  
   for (unsigned int i = 0; i < where_clause_attributes.size(); i++) {
     const auto *ai = where_clause_attributes[i];
     llvm::Value *attribute_id = codegen.Const32(ai->attribute_id);
-    llvm::Value *attribute_name = codegen.ConstStringPtr(ai->name);
+    llvm::Value *attribute_name = codegen.ConstString(ai->name,
+                                                      "attribute_name");
     bool is_lower_key = false;
     if (comparison_type[i] == peloton::ExpressionType::COMPARE_GREATERTHAN ||
         comparison_type[i] ==
@@ -385,8 +371,6 @@ void Table::SetIndexPredicate(CodeGen &codegen,
     }
   }
 } 
-   
-*/  
 
 }  // namespace codegen
 }  // namespace peloton

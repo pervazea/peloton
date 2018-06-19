@@ -17,12 +17,10 @@
 #include "codegen/proxy/data_table_proxy.h"
 #include "codegen/proxy/executor_context_proxy.h"
 #include "codegen/proxy/index_proxy.h"
-// #include "codegen/proxy/index_scan_iterator_proxy.h"
 #include "codegen/proxy/runtime_functions_proxy.h"
 #include "codegen/proxy/storage_manager_proxy.h"
 #include "codegen/proxy/tile_group_proxy.h"
 #include "codegen/proxy/transaction_runtime_proxy.h"
-// #include "codegen/operator/table_scan_translator.h"
 #include "codegen/type/boolean_type.h"
 #include "codegen/vector.h"
 #include "common/internal_types.h"
@@ -217,9 +215,10 @@ void IndexScanTranslator::Produce() const {
     }
 
     ScanConsumer scan_consumer{ctx, GetScanPlan(), sel_vec};
-    table_.GenerateIndexScan(codegen, table_ptr, sel_vec.GetCapacity(),
+    table_.GenerateIndexScan(codegen, GetCompilationContext(), table_ptr,
+                             sel_vec.GetCapacity(),
                              scan_consumer, predicate_ptr, num_preds,
-                             csp, index_ptr);
+                             csp, index_ptr, index_scan_);
   };
   
   // Execute serially
@@ -243,7 +242,6 @@ const storage::DataTable &IndexScanTranslator::GetTable() const {
   return *index_scan_.GetTable();
 }
 
-// TODO - determine if needed. Currently not used
 void IndexScanTranslator::SetIndexPredicate(UNUSED_ATTRIBUTE CodeGen &codegen,
                                             UNUSED_ATTRIBUTE llvm::Value *iterator_ptr) const {
   /*
@@ -251,11 +249,13 @@ void IndexScanTranslator::SetIndexPredicate(UNUSED_ATTRIBUTE CodeGen &codegen,
   std::vector<const expression::AbstractExpression *>
     constant_value_expressions;
   std::vector<ExpressionType> comparison_type;
+  
   // get predicate from abstract_scan_plan
   const auto *predicate = index_scan_.GetPredicate();
   if (predicate == nullptr) {
     return;
   }
+  
   auto &context = GetCompilationContext();
   const auto &parameter_cache = context.GetParameterCache();
   const QueryParametersMap &parameters_map =
@@ -264,6 +264,7 @@ void IndexScanTranslator::SetIndexPredicate(UNUSED_ATTRIBUTE CodeGen &codegen,
   predicate->GetUsedAttributesInPredicateOrder(where_clause_attributes,
                                                constant_value_expressions);
   predicate->GetComparisonTypeInPredicateOrder(comparison_type);
+  
   for (unsigned int i = 0; i < where_clause_attributes.size(); i++) {
     const auto *ai = where_clause_attributes[i];
     llvm::Value *attribute_id = codegen.Const32(ai->attribute_id);

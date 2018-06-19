@@ -38,24 +38,27 @@ namespace index {
  *
  * This class does not store the predicate itself (they should be stored as
  * vectors elsewhere)
+ * 
+ * There are 3 cases:
+ * 1. point query - only the low key should be touched, and it is exactly the 
+ *    key for construction of lower bound and for value late binding
+ * 
+ * 2. range query - <to be added>
  *
- * There are two corner cases with this class: full index scan and point query
- *
- * For full index scan, no key allocation is done, and both low key and high key
- * should not be touched on all cases, including construction of bounds and
- * value late binding. For point query, only the low key should be touched,
- * and it is exactly the key for construction of lower bound and for value
- * late binding
+ * 3. full index scan - no key allocation is done, and both low key and 
+ *    high key should not be touched on all cases, including construction of 
+ *    bounds and value late binding. 
  */
+  
 class ConjunctionScanPredicate {
  private:
-  // This is the list holding indices of the upper bound and lower bound
-  // for the scan key. We only keep index in the corresponding Value[]
-  // since some values might not be able to bind when constructing the
-  // IndexScanPlan
+  
+  // value_index_list_.length() == <number of columns in the index key>
   //
-  // The length of this vector should equal the number of columns in
-  // index key
+  // vector holds index of the upper and lower bound of the
+  // scan key, for each column. The index is kept as some values
+  // may not be bound at the time the IndexScanPlan is created.
+  
   std::vector<std::pair<oid_t, oid_t>> value_index_list_;
 
   // This vector holds indices for those index key columns that have
@@ -95,6 +98,8 @@ class ConjunctionScanPredicate {
   storage::Tuple *high_key_p_;
 
  private:
+  
+  // PA - not used?
   /*
    * SetTupleColumnValueForKey() - Similar to SetTupleColumnValue() but only
    *                               sets a given key
@@ -139,8 +144,9 @@ class ConjunctionScanPredicate {
     // It contains a pointer to the index key schema
     IndexMetadata *metadata_p = index_p->GetMetadata();
 
-    // If there are expressions that result in full index scan
-    // then this flag is set, and we do not construct lower bound
+    // If expressions require or result in a full scan:
+    // - full_index_scan_ = true
+    // - lower bound will not be constructed
     //
     // Actually if we do not do this optimization, ConstructScanInterval()
     // could still correctly construct all bounds as +/-Inf, but the index
@@ -149,10 +155,18 @@ class ConjunctionScanPredicate {
     // which is wasteful since a single index full scan should cover all cases
     full_index_scan_ = IndexUtil::HasNonOptimizablePredicate(expr_list);
 
-    // Only construct the two keys when full table scan is unnecessary
-    if (full_index_scan_ == false) {
-      // Then allocate storage for key template
+    if (full_index_scan_) {
+      // keys required to narrow the range are not required
+      low_key_p_ = nullptr;
+      high_key_p_ = nullptr;
 
+      is_point_query_ = false;
+    } else {
+      // It is either:
+      // - point scan which uses a low key
+      // - range scan, which uses both low and high keys
+      //
+      // Then allocate storage for key template
       // Give it a schema and true flag to let the constructor allocate
       // memory for holding fields inside the tuple
       //
@@ -160,19 +174,11 @@ class ConjunctionScanPredicate {
       low_key_p_ = new storage::Tuple(metadata_p->GetKeySchema(), true);
       high_key_p_ = new storage::Tuple(metadata_p->GetKeySchema(), true);
 
-      // This further initializes is_point_query flag, and then
-      // fill the high key and low key with boundary values
+      // sets is_point_query (if it is a point scan)
+      // sets high and low keys as appropriate to point or range scan
       ConstructScanInterval(index_p, value_list, tuple_column_id_list,
                             expr_list);
-    } else {
-      // This will not be touched in the destructor
-      low_key_p_ = nullptr;
-      high_key_p_ = nullptr;
-
-      // This must hold since full table scan could not be point query
-      is_point_query_ = false;
     }
-
     return;
   }
 
@@ -293,6 +299,7 @@ class ConjunctionScanPredicate {
     return;
   }
 
+  // PA - not used?
   /*
    * SetTupleColumnValueForLowKey() - Sets columns for low key
    */
@@ -305,6 +312,7 @@ class ConjunctionScanPredicate {
     return;
   }
 
+  // PA - not used?
   /*
    * SetTupleColumnValueForHighKey() - Sets columns for high key
    */
@@ -362,33 +370,30 @@ class ConjunctionScanPredicate {
 
   /*
    * ConstructScanInterval() - Find value indices for scan start key and end
-   *key
+   * key
    *
-   * NOTE: Currently only AND operation is supported inside IndexScanPlan, in
-   *a
+   * NOTE: Currently only AND operation is supported inside IndexScanPlan, in a
    * sense that we buffer the binding between key columns and actual values in
    * the IndexScanPlan object, assuming that for each column there is only one
    * interval to scan, such that the scan could be classified by its high key
    * and low key. This is true for AND, but not true for OR
-   *
-   * NOTE 2: This function should not be called if full_index_scan is true
    */
   void ConstructScanInterval(Index *index_p,
                              const std::vector<type::Value> &value_list,
                              const std::vector<oid_t> &tuple_column_id_list,
                              const std::vector<ExpressionType> &expr_list) {
-    // This must hold for all cases
+    PELOTON_ASSERT(full_index_scan_ == false);
     PELOTON_ASSERT(tuple_column_id_list.size() == expr_list.size());
 
     // We need to check index key schema
     const IndexMetadata *metadata_p = index_p->GetMetadata();
 
-    // This function will modify value_index_list, but value_index_list
-    // should have capacity 0 to avoid further problems
-    // PA:
+    // This function sets value_index_list, and assumes it starts empty
     PELOTON_ASSERT(value_index_list_.size() == 0);
-    is_point_query_ = IndexUtil::FindValueIndex(metadata_p, tuple_column_id_list,
-                                     expr_list, value_index_list_);
+    is_point_query_ = IndexUtil::FindValueIndex(metadata_p,
+                                                tuple_column_id_list,
+                                                expr_list,
+                                                value_index_list_);
 
     // value_index_list should be of the same length as the index key
     // schema, since it maps index key column to indices inside value_list
@@ -412,6 +417,7 @@ class ConjunctionScanPredicate {
       //
       // Also do the same for upper bound
       if (index_pair.first == INVALID_OID) {
+        // index key is valid
         PELOTON_ASSERT(is_point_query_ == false);
 
         // We set the value using index's varlen pool, if any VARCHAR is
@@ -419,6 +425,7 @@ class ConjunctionScanPredicate {
         type::Value val = (type::Type::GetMinValue(index_key_column_type));
         low_key_p_->SetValue(i, val, index_p->GetPool());
       } else {
+        // index key is a parameter value, to be "late bound".
         oid_t bind_ret = BindValueToIndexKey(
             index_p, value_list[index_pair.first], low_key_p_, i);
 
@@ -435,11 +442,13 @@ class ConjunctionScanPredicate {
       // Only bind the second half if point query is false
       if (is_point_query_ == false) {
         if (index_pair.second == INVALID_OID) {
+          // index key is valid          
           // We set the value using index's varlen pool, if any VARCHAR is
           // involved (this is OK since the routine only runs for once)
           type::Value val(type::Type::GetMaxValue(index_key_column_type));
           high_key_p_->SetValue(i, val, index_p->GetPool());
         } else {
+          // index key is a parameter value, to be "late bound".
           oid_t bind_ret = BindValueToIndexKey(
               index_p, value_list[index_pair.second], high_key_p_, i);
 
@@ -587,6 +596,31 @@ class ConjunctionScanPredicate {
   inline size_t GetBindingCount() const {
     return low_key_bind_list_.size() + high_key_bind_list_.size();
   }
+
+  /**
+   * WIP
+   * Hash the predicate. 
+   * 
+   * Note: caller must handle late binding. Define.
+   */
+  /*
+  hash_t Hash() {
+    hash_t hash = 0;
+    if (is_point_query_) {
+      // hash the low key, and address of is_point_query
+      hash = low_key_p_->HashCode();
+      hash = HashUtil::CombineHashes(hash, HashUtil::HashPtr(&is_point_query));
+    } else if (full_index_scan_) {
+      // neither low_key_p_ or high_key_p_ is set
+      hash = HashUtil::HashPtr(&full_index_scan_);
+    } else {
+      // range scan
+      hash = low_key_p_->HashCode();
+      hash = HashUtil::CombineHashes(hash, high_key_p_->HashCode());
+    }
+    return hash;
+  }
+  */
 };
 
 /////////////////////////////////////////////////////////////////////
@@ -657,6 +691,17 @@ class IndexScanPredicate {
     full_index_scan_ =
         full_index_scan_ || conjunction_list_.back().IsFullIndexScan();
 
+    return;
+  }
+
+  void UpdateConjunctionScanPredicate(
+      Index *index_p, const std::vector<type::Value> &value_list,
+      const std::vector<oid_t> &tuple_column_id_list,
+      const std::vector<ExpressionType> &expr_list) {
+    
+    conjunction_list_.clear();
+    AddConjunctionScanPredicate(index_p, value_list, tuple_column_id_list,
+                                expr_list);
     return;
   }
 

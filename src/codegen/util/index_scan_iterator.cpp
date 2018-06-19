@@ -57,7 +57,7 @@ void IndexScanIterator::DoScan() {
     index_->CodeGenRangeScan(low_key_p_, high_key_p_, result_);
   }
   LOG_DEBUG("result size = %lu\n", result_.size());
-  // LogDoScanResults();
+  LogDoScanResults();
 
   // TODO: fix whatever implementation deficiency this comment implies
   // TODO:
@@ -195,6 +195,7 @@ void IndexScanIterator::UpdateTupleWithBoolean(
   }
 }
 
+// for debugging
 void IndexScanIterator::LogDoScanResults() {
   LOG_INFO("\n");
   LOG_INFO("\nDoScan: result size = %lu\n", result_.size());

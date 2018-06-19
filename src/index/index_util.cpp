@@ -114,21 +114,20 @@ bool IndexUtil::FindValueIndex(const IndexMetadata *metadata_p,
   value_index_list.resize(index_column_count,
                           std::make_pair(INVALID_OID, INVALID_OID));
   
-  // This is used to count how many index columns have an "==" predicate
+  // no. of index columns that have an "==" predicate
   size_t counter = 0;
 
   // i in the common index for tuple column id, expression and value
-  for(oid_t i = 0;i < tuple_column_id_list.size();i++) {
+  for(oid_t i = 0; i < tuple_column_id_list.size(); i++) {
     
     // This is only used to retrieve index column id
     oid_t tuple_column_id = tuple_column_id_list[i];
 
     // Map tuple column to index column
-    oid_t index_column_id = \
+    oid_t index_column_id =
       metadata_p->GetTupleToIndexMapping()[tuple_column_id];
       
-    // Make sure the mapping exists (i.e. the tuple column is in
-    // index columns)
+    // the tuple column must exist in the index columns
     PELOTON_ASSERT(index_column_id != INVALID_OID);
     PELOTON_ASSERT(index_column_id < index_column_count);
     
@@ -158,7 +157,8 @@ bool IndexUtil::FindValueIndex(const IndexMetadata *metadata_p,
         // just checking whether these two equals suffices
         if(value_index_list[index_column_id].second == \
            value_index_list[index_column_id].first) {
-          PELOTON_ASSERT(value_index_list[index_column_id].second != INVALID_OID);
+          PELOTON_ASSERT(value_index_list[index_column_id].second !=
+                         INVALID_OID);
           
           // We have seen an equality relation
           counter++;

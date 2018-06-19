@@ -56,9 +56,8 @@ static void CompileAndExecutePlan(
       txn, codegen::QueryParameters(*plan, params)};
 
   // FIX
-  // Looking up the query in the cache, requires that the csp
-  // be attached to the plan. This fails, as the csp is attached during
-  // the compilation phase. 
+  // index predicate is not considered when determining plan
+  // equality... 
 
   // Check if we have a cached compiled plan already
   codegen::Query *query = codegen::QueryCache::Instance().Find(plan);
@@ -74,7 +73,7 @@ static void CompileAndExecutePlan(
 
     // Insert the compiled plan into the cache
     codegen::QueryCache::Instance().Add(plan, std::move(compiled_query));
-  } 
+  }
 
   // Execute the query!
   query->Execute(executor_context, consumer);

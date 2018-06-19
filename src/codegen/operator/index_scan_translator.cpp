@@ -160,17 +160,6 @@ IndexScanTranslator::IndexScanTranslator(
   auto index = index_scan_.GetTable()->GetIndexWithOid(index_id);
   PELOTON_ASSERT(index != nullptr);
 
-  // Set the conjunction scan predicate into the index scan plan.  
-  // TODO: fix, const_cast? Determine if there is a better place
-  // for keeping the CSP, e.g. move csp to query_state? c.f. hash join
-
-  // setting here is too late. Cached plans fail on search, as incoming
-  // plans don't have csp set
-  /*
-  const_cast<planner::IndexScanPlan &>(index_scan_).SetIndexPredicate(
-    index.get());
-  */
-  
   // debugging
   // std::vector<ItemPointer *> tuple_location_ptrs;
   // index->ScanAllKeys(tuple_location_ptrs);
@@ -420,16 +409,9 @@ void IndexScanTranslator::ScanConsumer::SetupRowBatch(
 void IndexScanTranslator::ScanConsumer::FilterRowsByVisibility(
     CodeGen &codegen, llvm::Value *tid_start, llvm::Value *tid_end,
     Vector &selection_vector) const {
-  /*
-  llvm::Value *executor_context_ptr =
-      translator_.GetCompilationContext().GetExecutorContextPtr();
-  */
+  
   ExecutionConsumer &ec = ctx_.GetCompilationContext().GetExecutionConsumer();
   llvm::Value *txn = ec.GetTransactionPtr(ctx_.GetCompilationContext());
-  /*
-  llvm::Value *txn = codegen.Call(ExecutorContextProxy::GetTransaction,
-                                  {executor_context_ptr});
-  */
   llvm::Value *raw_sel_vec = selection_vector.GetVectorPtr();
 
   // Invoke TransactionRuntime::PerformRead(...)
@@ -452,8 +434,6 @@ void IndexScanTranslator::ScanConsumer::FilterRowsByPredicate(
     llvm::Value *tid_start, llvm::Value *tid_end,
     Vector &selection_vector) const {
   // The batch we're filtering
-  //auto &compilation_ctx = translator_.GetCompilationContext();
-  
   RowBatch batch{ctx_.GetCompilationContext(), tile_group_id_, tid_start,
                  tid_end, selection_vector, true};
 

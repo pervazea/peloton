@@ -61,6 +61,7 @@ uint32_t TransactionRuntime::PerformVectorizedRead(
     // Update the selection vector and output position
     selection_vector[out_idx] = selection_vector[idx];
     out_idx += static_cast<uint32_t>(can_read);
+    LOG_DEBUG("out_idx = %d", out_idx);
   }
 
   return out_idx;

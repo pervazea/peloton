@@ -207,7 +207,9 @@ void Table::GenerateIndexScan(CodeGen &codegen,
     high_key = codegen.Const64((int64_t)(csp->GetHighKey()));
   }
   
-  // initialize the interator
+  // Get the iterator, to iterate over the index values.
+  // The keys have been set according to it being a point scan,
+  // range scan or full scan
   llvm::Value *iterator_ptr =
     codegen.Call(RuntimeFunctionsProxy::GetIterator,
                  {index_ptr, point_key, low_key, high_key});

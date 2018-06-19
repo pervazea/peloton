@@ -77,7 +77,7 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
  * 2. Only fields specified by the constructor could be modofied
  */
 void IndexScanPlan::SetParameterValues(std::vector<type::Value> *values) {
-  LOG_TRACE("Setting parameter values in Index Scans");
+  LOG_INFO("Setting parameter values in Index Scans");
 
   // Destroy the values of the last plan and copy the original values over for
   // binding
@@ -189,19 +189,24 @@ hash_t IndexScanPlan::Hash() const {
 #endif /* notdef */
   
 hash_t IndexScanPlan::Hash() const {
+  // start with node type (index scan plan)
   auto type = GetPlanNodeType();
   hash_t hash = HashUtil::Hash(&type);
 
+  // add the (indexed) storage table
   hash = HashUtil::CombineHashes(hash, GetTable()->Hash());
+
   if (GetPredicate() != nullptr) {
+    // add the (non-index) predicate
     hash = HashUtil::CombineHashes(hash, GetPredicate()->Hash());
   }
 
   for (auto &column_id : GetColumnIds()) {
+    // all columns in the table?
     hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&column_id));
   }
 
-  // hash the index id
+  // add the id of the index
   hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&index_id_));
 
   // hash the type of index scan
@@ -221,10 +226,16 @@ hash_t IndexScanPlan::Hash() const {
     hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_full_scan));
   }
 
+  /*
+  auto &index_predicate = GetIndexPredicate();
+  (void) index_predicate;
+  */
+  
   auto is_update = IsForUpdate();
   hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_update));
 
-  return HashUtil::CombineHashes(hash, AbstractPlan::Hash());
+  hash = HashUtil::CombineHashes(hash, AbstractPlan::Hash());
+  return false;
 }
 
 bool IndexScanPlan::operator==(const AbstractPlan &rhs) const {

@@ -35,14 +35,30 @@ class ParameterCache {
   explicit ParameterCache(const QueryParametersMap &map)
       : parameters_map_(map) {}
 
-  // Set the parameter values
+  /**
+   *  Set values for all the parameters
+   */
   void Populate(CodeGen &codegen, llvm::Value *query_parameters_ptr);
 
-  // Get the cached value for the given expression
+  /**
+   * @brief Return the cached value, specified by index
+   * 
+   * @param  index
+   * @return value from index location
+   */
   codegen::Value GetValue(uint32_t index) const;
+
+  /**
+   * @brief Return the cached value, specified by expression
+   * 
+   * @param  expr to look up
+   * @return value for the supplied expr
+   */
   codegen::Value GetValue(const expression::AbstractExpression *expr) const;
 
-  // Clear all cache parameter values
+  /** 
+   * Clear all cached parameter values
+   */
   void Reset();
   
   const QueryParametersMap &GetQueryParametersMap() const {

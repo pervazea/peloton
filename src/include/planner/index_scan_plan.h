@@ -20,6 +20,7 @@
 #include "expression/abstract_expression.h"
 #include "index/scan_optimizer.h"
 #include "planner/abstract_scan_plan.h"
+#include "storage/data_table.h"
 #include "storage/tuple.h"
 
 namespace peloton {
@@ -151,7 +152,9 @@ class IndexScanPlan : public AbstractScan {
 
   inline bool GetDescend() const { return descend_; }
 
-  const std::string GetInfo() const { return "IndexScan"; }
+  const std::string GetInfo() const {
+    return "IndexScan(" + GetPredicateInfo() + ")";
+  }
 
   void SetLimit(bool limit) { limit_ = limit; }
 
@@ -177,6 +180,15 @@ class IndexScanPlan : public AbstractScan {
     return std::unique_ptr<AbstractPlan>(new_plan);
   }
 
+
+  /**
+   * Creates a hash value for the plan. Used by the query cache (which
+   * contains compiled (codegen) plan code) to determine if the cached,
+   * compiled version of the plan may be used, or if recompilation is
+   * required.
+   *
+   * @return hash value for plan
+   */
   hash_t Hash() const override;
 
   bool operator==(const AbstractPlan &rhs) const override;
@@ -189,6 +201,21 @@ class IndexScanPlan : public AbstractScan {
     std::vector<peloton::type::Value> &values,
     const std::vector<peloton::type::Value> &values_from_user) override;
 
+  /*
+  void PerformBinding(BindingContext &binding_context) {
+    LOG_INFO("PerformBinding");
+    AbstractScan::PerformBinding(binding_context);
+
+    oid_t index_id = GetIndexId();
+    auto index = GetTable()->GetIndexWithOid(index_id);
+    PELOTON_ASSERT(index != nullptr);
+    index_predicate_.UpdateConjunctionScanPredicate(index.get(),
+                                                    GetValues(),
+                                                    GetKeyColumnIds(),
+                                                    GetExprTypes());
+  }
+  */
+
  private:
   /** @brief index associated with index scan. */
   oid_t index_id_;
@@ -198,7 +225,8 @@ class IndexScanPlan : public AbstractScan {
   // const std::vector<oid_t> column_ids_;
 
   // A list of column IDs involved in the index scan that are indexed by
-  // the index choen inside the optimizer
+  // the index chosen inside the optimizer
+  // PA: Clarify comment.
   const std::vector<oid_t> key_column_ids_;
 
   const std::vector<ExpressionType> expr_types_;
@@ -214,6 +242,7 @@ class IndexScanPlan : public AbstractScan {
   // into this array, which means the lifetime of values being bound is
   // also the lifetime of the IndexScanPlan object
   std::vector<type::Value> values_;
+  
   // the original copy of values with all the value parameters (bind them later)
   std::vector<type::Value> values_with_params_;
 

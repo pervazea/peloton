@@ -24,9 +24,8 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
                              const std::vector<oid_t> &column_ids,
                              const IndexScanDesc &index_scan_desc,
                              bool for_update_flag)
-  : AbstractScan(table, nullptr, column_ids, false),
+  : AbstractScan(table, predicate, column_ids, false),
     index_id_(index_scan_desc.index_id),
-    // column_ids_(column_ids),
     key_column_ids_(std::move(index_scan_desc.tuple_column_id_list)),
     expr_types_(std::move(index_scan_desc.expr_list)),
     values_with_params_(std::move(index_scan_desc.value_list)),
@@ -37,15 +36,8 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
     SetForUpdateFlag(true);
   }
 
-  // SetTargetTable(table);
-
-  // Is this redundant also? If we set the predicate via the
-  // AbstractScan constructor?
-  if (predicate != NULL) {
-    SetPredicate(predicate);
-  }
-
-  // copy the value over for binding purpose
+  // values_with_params_ i.e. PARAMETER_VALUES with values to be bound
+  // later. 
   for (auto val : values_with_params_) {
     values_.push_back(val.Copy());
   }
@@ -69,20 +61,23 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
   return;
 }
 
-/*
- * SetParameterValues() - Late binding for arguments specified in the
- *                        constructor
+/**
+ * Set actual values for PARAMETER_VALUE query arguments, i.e.
+ * late binding of values for prepared statements.
  *
- * 1. Do not use this function to change a field in the index key!!!!
- * 2. Only fields specified by the constructor could be modofied
- */
+ * Notes: 
+ * 1. Used only by the executor code. See VisitParameterValues for
+ *    codegen.
+ * 2. Not thread safe? The values_ are written into the plan, any
+ *    any concurrent use of this plan results in corruption of values.
+ */  
 void IndexScanPlan::SetParameterValues(std::vector<type::Value> *values) {
-  LOG_INFO("Setting parameter values in Index Scans");
+  LOG_TRACE("Setting parameter values in Index Scans");
 
-  // Destroy the values of the last plan and copy the original values over for
-  // binding
+  // clear previous values
   values_.clear();
   for (auto val : values_with_params_) {
+    // reset to original (unbound) list of parameters
     values_.push_back(val.Copy());
   }
 
@@ -91,6 +86,7 @@ void IndexScanPlan::SetParameterValues(std::vector<type::Value> *values) {
     auto column_id = key_column_ids_[i];
     if (value.GetTypeId() == type::TypeId::PARAMETER_OFFSET) {
       int offset = value.GetAs<int32_t>();
+      // replace with actual parameter value
       values_[i] =
           (values->at(offset))
               .CastAs(GetTable()->GetSchema()->GetColumn(column_id).GetType());
@@ -104,6 +100,7 @@ void IndexScanPlan::SetParameterValues(std::vector<type::Value> *values) {
   oid_t index_id = GetIndexId();
   auto index = GetTable()->GetIndexWithOid(index_id);
   PELOTON_ASSERT(index != nullptr);
+  // now that we have actual parameter values, sets the bounds for the scan
   index_predicate_.LateBindValues(index.get(), *values);
 
   for (auto &child_plan : GetChildren()) {

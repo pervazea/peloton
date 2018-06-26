@@ -12,6 +12,7 @@
 
 #include "codegen/util/index_scan_iterator.h"
 #include "common/logger.h"
+#include "executor/executor_context.h"
 #include "type/value_factory.h"
 #include "storage/tuple.h"
 #include <string.h>
@@ -20,31 +21,35 @@ namespace peloton {
 namespace codegen {
 namespace util {
 
-// Todo:
-// Clean up with alternate constructors?
+/* TODO, fix to take in the index scan information from the executor context
+ * and initialize the index scan using it. The current approach is
+ * not thread safe or general.
+ */
+  
 IndexScanIterator::IndexScanIterator(index::Index *index,
-                                     storage::Tuple *point_key_p,
-                                     storage::Tuple *low_key_p,
-                                     storage::Tuple *high_key_p) {
+                                     executor::ExecutorContext *executor_context) {
   index_ = index;
-  if (point_key_p != nullptr) {
-    // point scan
+  planner::AbstractPlan *plan_root = executor_context->GetPlan();
+  const planner::IndexScanPlan *plan = FindIndexPlan(plan_root);
+  PELOTON_ASSERT(plan);
+
+  const index::ConjunctionScanPredicate *csp = 
+    &(plan->GetIndexPredicate().GetConjunctionList()[0]);
+
+  if (csp->IsPointQuery()) {
     is_point_query_ = true;
-    is_full_scan_ = false;
-    point_key_p_ = point_key_p;
-    LOG_DEBUG("point scan");
-  } else if (low_key_p != nullptr && high_key_p != nullptr) {
+    is_full_scan_ = false;    
+    point_key_p_ = const_cast<storage::Tuple *> (csp->GetPointQueryKey());
+  } else if (!csp->IsFullIndexScan()) {
     // range scan
     is_point_query_ = false;
     is_full_scan_ = false;
-    low_key_p_ = low_key_p;
-    high_key_p_ = high_key_p;
-    LOG_DEBUG("range scan");
+    low_key_p_ = const_cast<storage::Tuple *> (csp->GetLowKey());
+    high_key_p_ = const_cast<storage::Tuple *> (csp->GetHighKey());
   } else {
     // full scan
     is_point_query_ = false;
     is_full_scan_ = true;
-    LOG_DEBUG("full scan");
   }
 }
 
@@ -71,6 +76,30 @@ void IndexScanIterator::DoScan() {
   // ascending tile group offset) and produce one RowBatch for these tuples
 }
 
+/*
+ * Temporary
+ * Find the index plan node. Correct solution is to take the runtime parameter
+ * values and use them to initialize the scan range, in a thread safe
+ * manner.
+ */  
+const planner::IndexScanPlan *IndexScanIterator::FindIndexPlan(const planner::AbstractPlan *node) {
+  const planner::IndexScanPlan *index_node = nullptr;
+
+  if (node->GetPlanNodeType() == PlanNodeType::INDEXSCAN) {
+    return (reinterpret_cast<const planner::IndexScanPlan *> (node));
+  }
+
+  for (uint i=0; i<node->GetChildrenSize(); i++) {
+    const planner::AbstractPlan *child_node = node->GetChild(i);
+    index_node = FindIndexPlan(child_node);
+    if (index_node) {
+      return (index_node);
+    }
+  }
+  // not found, return nullptr
+  return (index_node);
+}
+
 // binary search to check whether the target offset is in the results
 bool IndexScanIterator::RowOffsetInResult(uint64_t distinct_tile_index,
                                           uint32_t row_offset) {
@@ -92,120 +121,16 @@ bool IndexScanIterator::RowOffsetInResult(uint64_t distinct_tile_index,
   return false;
 }
 
-void IndexScanIterator::UpdateTupleWithInteger(
-    int value, UNUSED_ATTRIBUTE int attribute_id, char *attribute_name,
-    bool is_lower_key) {
-  
-  if (is_full_scan_)
-    return;
-
-  storage::Tuple *update_tuple =
-      (is_point_query_) ? point_key_p_
-                        : ((is_lower_key) ? low_key_p_ : high_key_p_);
-  const std::vector<catalog::Column> &columns =
-      update_tuple->GetSchema()->GetColumns();
-  // possibly use GetColumnID(std::string col_name) to get the index
-  for (unsigned int i = 0; i < columns.size(); i++) {
-    if (strcmp(columns[i].GetName().c_str(), attribute_name) == 0) {
-      update_tuple->SetValue(
-          i, peloton::type::ValueFactory::GetIntegerValue(value));
-      break;
-    }
-  }
-}
-
-void IndexScanIterator::UpdateTupleWithBigInteger(
-    int64_t value, UNUSED_ATTRIBUTE int attribute_id, char *attribute_name,
-    bool is_lower_key) {
-  if (is_full_scan_) return;
-
-  storage::Tuple *update_tuple =
-      (is_point_query_) ? point_key_p_
-                        : ((is_lower_key) ? low_key_p_ : high_key_p_);
-  const std::vector<catalog::Column> &columns =
-      update_tuple->GetSchema()->GetColumns();
-  for (unsigned int i = 0; i < columns.size(); i++) {
-    if (strcmp(columns[i].GetName().c_str(), attribute_name) == 0) {
-      update_tuple->SetValue(
-          i, peloton::type::ValueFactory::GetBigIntValue(value));
-      break;
-    }
-  }
-}
-
-void IndexScanIterator::UpdateTupleWithDouble(
-    double value,
-    UNUSED_ATTRIBUTE int attribute_id,
-    char *attribute_name,
-    bool is_lower_key) {
-  
-  if (is_full_scan_)
-    return;
-
-  storage::Tuple *update_tuple =
-      (is_point_query_) ? point_key_p_
-                        : ((is_lower_key) ? low_key_p_ : high_key_p_);
-  const std::vector<catalog::Column> &columns =
-      update_tuple->GetSchema()->GetColumns();
-  for (unsigned int i = 0; i < columns.size(); i++) {
-    if (strcmp(columns[i].GetName().c_str(), attribute_name) == 0) {
-      update_tuple->SetValue(
-          i, peloton::type::ValueFactory::GetDecimalValue(value));
-      break;
-    }
-  }
-}
-
-void IndexScanIterator::UpdateTupleWithVarchar(
-    char *value, UNUSED_ATTRIBUTE int attribute_id, char *attribute_name,
-    bool is_lower_key) {
-  if (is_full_scan_) return;
-
-  storage::Tuple *update_tuple =
-      (is_point_query_) ? point_key_p_
-                        : ((is_lower_key) ? low_key_p_ : high_key_p_);
-  const std::vector<catalog::Column> &columns =
-      update_tuple->GetSchema()->GetColumns();
-  for (unsigned int i = 0; i < columns.size(); i++) {
-    if (strcmp(columns[i].GetName().c_str(), attribute_name) == 0) {
-      update_tuple->SetValue(i, peloton::type::ValueFactory::GetVarcharValue(
-                                    value, false, index_->GetPool()),
-                             index_->GetPool());
-      break;
-    }
-  }
-}
-
-void IndexScanIterator::UpdateTupleWithBoolean(
-    bool value, UNUSED_ATTRIBUTE int attribute_id, char *attribute_name,
-    bool is_lower_key) {
-  if (is_full_scan_) return;
-
-  storage::Tuple *update_tuple =
-      (is_point_query_) ? point_key_p_
-                        : ((is_lower_key) ? low_key_p_ : high_key_p_);
-  const std::vector<catalog::Column> &columns =
-      update_tuple->GetSchema()->GetColumns();
-  for (unsigned int i = 0; i < columns.size(); i++) {
-    if (strcmp(columns[i].GetName().c_str(), attribute_name) == 0) {
-      update_tuple->SetValue(
-          i, peloton::type::ValueFactory::GetBooleanValue(value));
-      break;
-    }
-  }
-}
-
 // for debugging
 void IndexScanIterator::LogDoScanResults() {
-  LOG_INFO("\n");
-  LOG_INFO("\nDoScan: result size = %lu\n", result_.size());
+  LOG_DEBUG("\n");
+  LOG_DEBUG("\nDoScan: result size = %lu\n", result_.size());
   for (uint32_t i=0; i<result_.size(); i++) {
-    LOG_INFO("%u: block: %u offset %u",
+    LOG_DEBUG("%u: block: %u offset %u",
              i, result_[i]->block, result_[i]->offset);
   }
-  LOG_INFO("\n");
+  LOG_DEBUG("\n");
 }
-    
 
 }  // namespace util
 }  // namespace codegen

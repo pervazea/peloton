@@ -145,9 +145,7 @@ IndexScanTranslator::IndexScanTranslator(
       index_scan_(index_scan),
       table_(*index_scan_.GetTable()) {
 
-  // PA - GetPredicate obtains the predicate from the AbstractPlan.
-  // Currently never set in any of the test scenarios... possibly never
-  // set?
+  // obtains the predicate from the AbstractScanPlan.
   const auto *predicate = index_scan_.GetPredicate();
   
   if (predicate != nullptr) {
@@ -242,105 +240,6 @@ const storage::DataTable &IndexScanTranslator::GetTable() const {
   return *index_scan_.GetTable();
 }
 
-void IndexScanTranslator::SetIndexPredicate(UNUSED_ATTRIBUTE CodeGen &codegen,
-                                            UNUSED_ATTRIBUTE llvm::Value *iterator_ptr) const {
-  /*
-  std::vector<const planner::AttributeInfo *> where_clause_attributes;
-  std::vector<const expression::AbstractExpression *>
-    constant_value_expressions;
-  std::vector<ExpressionType> comparison_type;
-  
-  // get predicate from abstract_scan_plan
-  const auto *predicate = index_scan_.GetPredicate();
-  if (predicate == nullptr) {
-    return;
-  }
-  
-  auto &context = GetCompilationContext();
-  const auto &parameter_cache = context.GetParameterCache();
-  const QueryParametersMap &parameters_map =
-    parameter_cache.GetQueryParametersMap();
-  
-  predicate->GetUsedAttributesInPredicateOrder(where_clause_attributes,
-                                               constant_value_expressions);
-  predicate->GetComparisonTypeInPredicateOrder(comparison_type);
-  
-  for (unsigned int i = 0; i < where_clause_attributes.size(); i++) {
-    const auto *ai = where_clause_attributes[i];
-    llvm::Value *attribute_id = codegen.Const32(ai->attribute_id);
-    llvm::Value *attribute_name = codegen.ConstStringPtr(ai->name);
-    bool is_lower_key = false;
-    if (comparison_type[i] == peloton::ExpressionType::COMPARE_GREATERTHAN ||
-        comparison_type[i] ==
-        peloton::ExpressionType::COMPARE_GREATERTHANOREQUALTO) {
-      is_lower_key = true;
-    }
-    llvm::Value *is_lower = codegen.ConstBool(is_lower_key);
-
-    // figure out codegen parameter index for this attribute
-    auto parameters_index =
-      parameters_map.GetIndex(constant_value_expressions[i]);
-    llvm::Value *parameter_value =
-      parameter_cache.GetValue(parameters_index).GetValue();
-    switch (ai->type.type_id) {
-      case peloton::type::TypeId::TINYINT:
-      case peloton::type::TypeId::SMALLINT:
-      case peloton::type::TypeId::INTEGER: {
-        codegen.Call(IndexScanIteratorProxy::UpdateTupleWithInteger,
-                     {iterator_ptr, parameter_value, attribute_id,
-                         attribute_name, is_lower});
-        break;
-      }
-      
-      case peloton::type::TypeId::TIMESTAMP:
-      case peloton::type::TypeId::BIGINT: {
-        codegen.Call(IndexScanIteratorProxy::UpdateTupleWithBigInteger,
-                     {iterator_ptr, codegen->CreateSExt(parameter_value,
-                                                        codegen.Int64Type()),
-                         attribute_id, attribute_name, is_lower});
-        break;
-      }
-      
-      case peloton::type::TypeId::DECIMAL: {
-        if (parameter_value->getType() != codegen.DoubleType()) {
-          codegen.Call(
-                       IndexScanIteratorProxy::UpdateTupleWithDouble,
-                       {iterator_ptr,
-                           codegen->CreateSIToFP(parameter_value, codegen.DoubleType()),
-                           attribute_id, attribute_name, is_lower});
-        } else {
-          codegen.Call(IndexScanIteratorProxy::UpdateTupleWithDouble,
-                       {iterator_ptr, parameter_value, attribute_id,
-                           attribute_name, is_lower});
-        }
-        break;
-      }
-      
-      case peloton::type::TypeId::VARBINARY:
-      case peloton::type::TypeId::VARCHAR: {
-        codegen.Call(IndexScanIteratorProxy::UpdateTupleWithVarchar,
-                     {iterator_ptr, parameter_value, attribute_id,
-                         attribute_name, is_lower});
-        break;
-      }
-      
-      case peloton::type::TypeId::BOOLEAN: {
-        codegen.Call(IndexScanIteratorProxy::UpdateTupleWithBoolean,
-                     {iterator_ptr, parameter_value, attribute_id,
-                         attribute_name, is_lower});
-        break;
-      }
-      
-      default: {
-        throw new Exception("Type" +
-                            peloton::TypeIdToString(ai->type.type_id) +
-                            " is not supported in codegen yet");
-      }
-    }
-  }
-  */
-}    
-
 /* --------------------
  * ScanConsumer methods 
  * --------------------
@@ -371,11 +270,6 @@ void IndexScanTranslator::ScanConsumer::ProcessTuples(
   std::vector<IndexScanTranslator::AttributeAccess> attribute_accesses;
   SetupRowBatch(batch, tile_group_access, attribute_accesses);
 
-  // 4. Push the batch into the pipeline
-  /*
-  ConsumerContext context{translator_.GetCompilationContext(),
-                          translator_.GetPipeline()};
-  */
   ctx_.Consume(batch);
 }
 

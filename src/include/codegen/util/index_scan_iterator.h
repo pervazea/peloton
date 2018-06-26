@@ -17,6 +17,7 @@
 
 #include "codegen/codegen.h"
 #include "index/index.h"
+#include "planner/index_scan_plan.h"
 
 namespace peloton {
 namespace codegen {
@@ -39,21 +40,20 @@ class IndexScanIterator {
  public:
 
   /**
-   * Construct an iterator for the index. Arguments are either
-   * a point_key or low, high keys
+   * Construct an iterator for the index. 
    *
-   * @param[in]   point_key_p
-   * @param[in]   low_key_p
-   * @param[in]   high_key_p
+   * @param[in]   index - constructing iterator for this index
+   * @param[in]   executor_context. Runtime values for query parameters
    */
+  
   IndexScanIterator(index::Index *index,
-                    storage::Tuple *point_key_p,
-                    storage::Tuple *low_key_p, storage::Tuple *high_key_p);
-
+                    executor::ExecutorContext *executor_context);
   /**
    * Iterate over the index and save results in temporary storage.
    */
   void DoScan();
+
+  const planner::IndexScanPlan *FindIndexPlan(const planner::AbstractPlan *node);
 
   uint64_t GetDistinctTileGroupNum() {
     return (uint64_t)distinct_tile_group_num_;
@@ -73,21 +73,6 @@ class IndexScanIterator {
 
   uint64_t GetResultSize() { return (uint64_t)result_.size(); }
 
-  void UpdateTupleWithInteger(int value, int attribute_id, char *attribute_name,
-                              bool is_lower_key);
-
-  void UpdateTupleWithBigInteger(int64_t value, int attribute_id,
-                                 char *attribute_name, bool is_lower_key);
-
-  void UpdateTupleWithDouble(double value, int attribute_id,
-                             char *attribute_name, bool is_lower_key);
-
-  void UpdateTupleWithVarchar(char *value, int attribute_id,
-                              char *attribute_name, bool is_lower_key);
-
-  void UpdateTupleWithBoolean(bool value, int attribute_id,
-                              char *attribute_name, bool is_lower_key);
-
   // for debugging
   void LogDoScanResults();
 
@@ -95,7 +80,7 @@ class IndexScanIterator {
   bool is_full_scan_;
   bool is_point_query_;
   index::Index *index_;
-  
+
   // used if is_point_query_
   storage::Tuple *point_key_p_;
 

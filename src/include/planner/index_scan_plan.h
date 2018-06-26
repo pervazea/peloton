@@ -49,12 +49,22 @@ class IndexScanPlan : public AbstractScan {
      */
     IndexScanDesc() : index_id{INVALID_OID} {}
 
-    /*
-     * Constructor
-     *
-     * This constructor is called when an index scan is required. For the
-     * situations where index is not required, the default constructor should
-     * be called to notify later procedures of the absense of an index
+    /**
+     * @brief IndexScanDesc Constructor - index scan descriptor
+     *        passes information relating to initialization and 
+     *        execution of an index scan from the planner/optimizer to the 
+     *        index scan plan. When no index is required, this must still be 
+     *        called to set default values.
+     * 
+     *        The 3 vectors, p_tuple_column_id_list, expr_list_p and 
+     *        p_value_list are identical in size. 
+     * 
+     * @param[in] - p_tuple_column_id_list - ids for indexed columns
+     * @param[in] - expr_list_p - (predicate) expressions
+     * @param[in] - p_value_list - actual values or placeholders 
+     *                             (PARAMETER_VALUES) to be filled in
+     *                             by SetParameterValues.
+     * @param[in] - runtime_key_list ?
      */
     IndexScanDesc(
         oid_t p_index_id,
@@ -90,7 +100,8 @@ class IndexScanPlan : public AbstractScan {
     // A list of expressions
     std::vector<ExpressionType> expr_list;
 
-    // A list of values either bounded or unbounded
+    // A list of values either bound or unbound (also referred to as
+    // late binding or PARAMETER_VALUEs)
     std::vector<type::Value> value_list;
 
     // ???
@@ -101,6 +112,18 @@ class IndexScanPlan : public AbstractScan {
   // Members of IndexScanPlan
   ///////////////////////////////////////////////////////////////////
 
+  /**
+   * @brief Constructor an index scan plan
+   *
+   * @param[in] table - for the index
+   * @param[in] predicate - the full predicate, i.e. index columns as
+   *                        well as non-index columns
+   * @param[in] column_ids - indexed columns?
+   * @param[in] index_scan_desc - expressions, column ids and values,
+   *                              for the index predicate.
+   * @param[in] for_update_flag
+   * 
+   */
   IndexScanPlan(storage::DataTable *table,
                 expression::AbstractExpression *predicate,
                 const std::vector<oid_t> &column_ids,
@@ -201,38 +224,16 @@ class IndexScanPlan : public AbstractScan {
     std::vector<peloton::type::Value> &values,
     const std::vector<peloton::type::Value> &values_from_user) override;
 
-  /*
-  void PerformBinding(BindingContext &binding_context) {
-    LOG_INFO("PerformBinding");
-    AbstractScan::PerformBinding(binding_context);
-
-    oid_t index_id = GetIndexId();
-    auto index = GetTable()->GetIndexWithOid(index_id);
-    PELOTON_ASSERT(index != nullptr);
-    index_predicate_.UpdateConjunctionScanPredicate(index.get(),
-                                                    GetValues(),
-                                                    GetKeyColumnIds(),
-                                                    GetExprTypes());
-  }
-  */
-
  private:
   /** @brief index associated with index scan. */
   oid_t index_id_;
 
-  // A list of column IDs involved in the index scan no matter whether
-  // it is indexed or not (i.e. select statement)
-  // const std::vector<oid_t> column_ids_;
-
-  // A list of column IDs involved in the index scan that are indexed by
-  // the index chosen inside the optimizer
-  // PA: Clarify comment.
+  // IDs of indexed columns. Provided by the optimizer via IndexScanDesc
   const std::vector<oid_t> key_column_ids_;
 
+  // Provided by the optimizer via IndexScanDesc
   const std::vector<ExpressionType> expr_types_;
 
-  // LM: I removed a const keyword for binding purpose
-  //
   // The life time of the scan predicate is as long as the lifetime
   // of this array, since we always use the values in this array to
   // construct low key and high key for the scan plan, it should stay
@@ -243,7 +244,7 @@ class IndexScanPlan : public AbstractScan {
   // also the lifetime of the IndexScanPlan object
   std::vector<type::Value> values_;
   
-  // the original copy of values with all the value parameters (bind them later)
+  // PARAMETER_VALUEs. Actual values provided later by SetParameterValues
   std::vector<type::Value> values_with_params_;
 
   const std::vector<expression::AbstractExpression *> runtime_keys_;

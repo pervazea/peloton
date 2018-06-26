@@ -25,7 +25,7 @@ DEFINE_METHOD(peloton::executor::ExecutorContext, ThreadStates, Allocate);
 
 // ExecutorContext
 DEFINE_TYPE(ExecutorContext, "executor::ExecutorContext", num_processed, txn,
-            params, storage_manager, pool, thread_states);
+            params, storage_manager, pool, thread_states, plan);
 
 }  // namespace codegen
 }  // namespace peloton

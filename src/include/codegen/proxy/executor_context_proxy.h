@@ -17,6 +17,7 @@
 #include "codegen/proxy/query_parameters_proxy.h"
 #include "codegen/proxy/storage_manager_proxy.h"
 #include "codegen/proxy/pool_proxy.h"
+#include "codegen/proxy/abstract_plan_proxy.h"
 #include "executor/executor_context.h"
 
 namespace peloton {
@@ -41,6 +42,7 @@ PROXY(ExecutorContext) {
   DECLARE_MEMBER(3, storage::StorageManager *, storage_manager);
   DECLARE_MEMBER(4, peloton::type::EphemeralPool, pool);
   DECLARE_MEMBER(5, executor::ExecutorContext::ThreadStates, thread_states);
+  DECLARE_MEMBER(6, planner::AbstractPlan *, plan);
   DECLARE_TYPE;
 };
 

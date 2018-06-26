@@ -53,11 +53,7 @@ static void CompileAndExecutePlan(
 
   // The executor context for this execution
   executor::ExecutorContext executor_context{
-      txn, codegen::QueryParameters(*plan, params)};
-
-  // FIX
-  // index predicate is not considered when determining plan
-  // equality... 
+    txn, plan.get(), codegen::QueryParameters(*plan, params)};
 
   // Check if we have a cached compiled plan already
   codegen::Query *query = codegen::QueryCache::Instance().Find(plan);

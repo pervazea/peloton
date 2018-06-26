@@ -48,7 +48,9 @@ void AbstractExpression::PerformBinding(
     children_[i]->PerformBinding(binding_contexts);
   }
 }
-  
+
+
+// PA - misnamed and incorrect.
 void AbstractExpression::GetUsedAttributesInPredicateOrder(
     std::vector<const planner::AttributeInfo *> &attributes,
     std::vector<const AbstractExpression *> &constant_value_expressions) const {

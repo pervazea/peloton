@@ -28,6 +28,11 @@ namespace codegen {
 Table::Table(storage::DataTable &table)
     : table_(table), tile_group_(*table_.GetSchema()) {}
 
+  /*
+llvm::Value *Table::GetExecutorContextPtr() const {
+  return context_.GetExecutionConsumer().GetExecutorContextPtr(context_);
+  */
+
 // We determine tile group count by calling DataTable::GetTileGroupCount(...)
 llvm::Value *Table::GetTileGroupCount(CodeGen &codegen,
                                       llvm::Value *table_ptr) const {
@@ -173,7 +178,8 @@ void Table::GenerateIndexScan(CodeGen &codegen,
                               const index::ConjunctionScanPredicate *csp,
                               llvm::Value *index_ptr,
                               const planner::IndexScanPlan &index_scan) const {
-  
+
+  (void) csp;
   // Allocate some space for the column layouts
   const auto num_columns =
       static_cast<uint32_t>(table_.GetSchema()->GetColumnCount());
@@ -193,31 +199,18 @@ void Table::GenerateIndexScan(CodeGen &codegen,
                  {predicate_ptr, predicate_array});
   }
 
-  // point scan key
-  llvm::Value *point_key = codegen.Const64(0);
-  // range scan keys (low, high)  
-  llvm::Value *low_key = codegen.Const64(0);
-  llvm::Value *high_key = codegen.Const64(0);
-
-  // determine the type of scan, and set values for the corresponding keys
-  if (csp->IsPointQuery()) {
-    auto ncg_point_key = csp->GetPointQueryKey();
-    point_key = codegen.Const64((int64_t)(ncg_point_key));
-  } else if (!csp->IsFullIndexScan()) {
-    // range scan
-    low_key = codegen.Const64((int64_t)(csp->GetLowKey()));
-    high_key = codegen.Const64((int64_t)(csp->GetHighKey()));
-  }
-  
   // Get the iterator, to iterate over the index values.
   // The keys have been set according to it being a point scan,
   // range scan or full scan
   llvm::Value *iterator_ptr =
     codegen.Call(RuntimeFunctionsProxy::GetIterator,
-                 {index_ptr, point_key, low_key, high_key});
+                 {index_ptr,
+                     context.GetExecutionConsumer().GetExecutorContextPtr(context)});
 
+  (void) context;
+  (void) index_scan;
   // before doing scan, update the tuple with parameter cache!
-  SetIndexPredicate(codegen, context, iterator_ptr, index_scan);
+  //SetIndexPredicate(codegen, context, iterator_ptr, index_scan);
 
   // DoScan extracts data from the index and keeps the results, to be
   // retrieved via subsequent calls to the proxy
@@ -268,109 +261,6 @@ void Table::GenerateIndexScan(CodeGen &codegen,
                  {result_idx});
   }
 }
-
-// rename. This updates the index predicate with the values
-// from the current query. UpdateIndexPredicateValues
-void Table::SetIndexPredicate(CodeGen &codegen,
-                              CompilationContext &context,
-                              llvm::Value *iterator_ptr,
-                              const planner::IndexScanPlan &index_scan) const {
-  std::vector<const planner::AttributeInfo *> where_clause_attributes;
-  std::vector<const expression::AbstractExpression *>
-    constant_value_expressions;
-  std::vector<ExpressionType> comparison_type;
-
-  // ?? Is this correct? We want to proceed if there is an index
-  // predicate.
-  // get predicate from abstract_scan_plan
-  const auto *predicate = index_scan.GetPredicate();
-  if (predicate == nullptr) {
-    return;
-  }
-
-  const auto &parameter_cache = context.GetParameterCache();
-  const QueryParametersMap &parameters_map =
-    parameter_cache.GetQueryParametersMap();
-  
-  predicate->GetUsedAttributesInPredicateOrder(where_clause_attributes,
-                                               constant_value_expressions);
-  predicate->GetComparisonTypeInPredicateOrder(comparison_type);
-  
-  for (unsigned int i = 0; i < where_clause_attributes.size(); i++) {
-    const auto *ai = where_clause_attributes[i];
-    llvm::Value *attribute_id = codegen.Const32(ai->attribute_id);
-    llvm::Value *attribute_name = codegen.ConstString(ai->name,
-                                                      "attribute_name");
-    bool is_lower_key = false;
-    if (comparison_type[i] == peloton::ExpressionType::COMPARE_GREATERTHAN ||
-        comparison_type[i] ==
-        peloton::ExpressionType::COMPARE_GREATERTHANOREQUALTO) {
-      is_lower_key = true;
-    }
-    llvm::Value *is_lower = codegen.ConstBool(is_lower_key);
-
-    // figure out codegen parameter index for this attribute
-    auto parameters_index =
-      parameters_map.GetIndex(constant_value_expressions[i]);
-    llvm::Value *parameter_value =
-      parameter_cache.GetValue(parameters_index).GetValue();
-    switch (ai->type.type_id) {
-      case peloton::type::TypeId::TINYINT:
-      case peloton::type::TypeId::SMALLINT:
-      case peloton::type::TypeId::INTEGER: {
-        codegen.Call(IndexScanIteratorProxy::UpdateTupleWithInteger,
-                     {iterator_ptr, parameter_value, attribute_id,
-                         attribute_name, is_lower});
-        break;
-      }
-      
-      case peloton::type::TypeId::TIMESTAMP:
-      case peloton::type::TypeId::BIGINT: {
-        codegen.Call(IndexScanIteratorProxy::UpdateTupleWithBigInteger,
-                     {iterator_ptr, codegen->CreateSExt(parameter_value,
-                                                        codegen.Int64Type()),
-                         attribute_id, attribute_name, is_lower});
-        break;
-      }
-      
-      case peloton::type::TypeId::DECIMAL: {
-        if (parameter_value->getType() != codegen.DoubleType()) {
-          codegen.Call(
-                       IndexScanIteratorProxy::UpdateTupleWithDouble,
-                       {iterator_ptr,
-                           codegen->CreateSIToFP(parameter_value, codegen.DoubleType()),
-                           attribute_id, attribute_name, is_lower});
-        } else {
-          codegen.Call(IndexScanIteratorProxy::UpdateTupleWithDouble,
-                       {iterator_ptr, parameter_value, attribute_id,
-                           attribute_name, is_lower});
-        }
-        break;
-      }
-      
-      case peloton::type::TypeId::VARBINARY:
-      case peloton::type::TypeId::VARCHAR: {
-        codegen.Call(IndexScanIteratorProxy::UpdateTupleWithVarchar,
-                     {iterator_ptr, parameter_value, attribute_id,
-                         attribute_name, is_lower});
-        break;
-      }
-      
-      case peloton::type::TypeId::BOOLEAN: {
-        codegen.Call(IndexScanIteratorProxy::UpdateTupleWithBoolean,
-                     {iterator_ptr, parameter_value, attribute_id,
-                         attribute_name, is_lower});
-        break;
-      }
-      
-      default: {
-        throw new Exception("Type" +
-                            peloton::TypeIdToString(ai->type.type_id) +
-                            " is not supported in codegen yet");
-      }
-    }
-  }
-} 
 
 }  // namespace codegen
 }  // namespace peloton

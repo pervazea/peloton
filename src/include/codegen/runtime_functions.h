@@ -16,6 +16,7 @@
 
 #include "common/internal_types.h"
 #include "executor/executor_context.h"
+#include "planner/index_scan_plan.h"
 
 namespace peloton {
 
@@ -138,9 +139,7 @@ class RuntimeFunctions {
   static void ThrowOverflowException();
   
   static util::IndexScanIterator *GetIterator(index::Index *index,
-                                              int64_t point_key_p,
-                                              int64_t low_key_p,
-                                              int64_t high_key_p);
+                                              executor::ExecutorContext *executor_context);
 
   static void DeleteIterator(util::IndexScanIterator *iterator);
 

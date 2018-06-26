@@ -24,16 +24,6 @@ DEFINE_METHOD(peloton::codegen::util, IndexScanIterator, GetTileGroupId);
 //DEFINE_METHOD(peloton::codegen::util, IndexScanIterator, RowOffsetInResult);
 DEFINE_METHOD(peloton::codegen::util, IndexScanIterator, GetResultSize);
 DEFINE_METHOD(peloton::codegen::util, IndexScanIterator, GetTileGroupOffset);
-DEFINE_METHOD(peloton::codegen::util, IndexScanIterator,
-              UpdateTupleWithInteger);
-DEFINE_METHOD(peloton::codegen::util, IndexScanIterator,
-              UpdateTupleWithBigInteger);
-DEFINE_METHOD(peloton::codegen::util, IndexScanIterator,
-              UpdateTupleWithDouble);
-DEFINE_METHOD(peloton::codegen::util, IndexScanIterator,
-              UpdateTupleWithVarchar);
-DEFINE_METHOD(peloton::codegen::util, IndexScanIterator,
-              UpdateTupleWithBoolean);
 
 }  // namespace codegen
 }  // namespace peloton

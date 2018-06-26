@@ -28,7 +28,17 @@ ExecutorContext::ExecutorContext(concurrency::TransactionContext *transaction,
     : transaction_(transaction),
       parameters_(std::move(parameters)),
       storage_manager_(storage::StorageManager::GetInstance()),
-      thread_states_(pool_) {}
+      thread_states_(pool_),
+      plan_(nullptr) {}
+
+ExecutorContext::ExecutorContext(concurrency::TransactionContext *transaction,
+                                 planner::AbstractPlan *plan,
+                                 codegen::QueryParameters parameters)
+    : transaction_(transaction),
+      parameters_(std::move(parameters)),
+      storage_manager_(storage::StorageManager::GetInstance()),
+      thread_states_(pool_),
+      plan_(plan) {}
 
 concurrency::TransactionContext *ExecutorContext::GetTransaction() const {
   return transaction_;
@@ -49,6 +59,10 @@ type::EphemeralPool *ExecutorContext::GetPool() { return &pool_; }
 ExecutorContext::ThreadStates &ExecutorContext::GetThreadStates() {
   return thread_states_;
 }
+
+planner::AbstractPlan *ExecutorContext::GetPlan() const {
+  return plan_;
+}  
 
 ////////////////////////////////////////////////////////////////////////////////
 ///

@@ -66,11 +66,6 @@ class Table {
                          const index::ConjunctionScanPredicate *csp,
                          llvm::Value *index_ptr,
                          const planner::IndexScanPlan &index_scan) const;
-  
-  void SetIndexPredicate(CodeGen &codegen,
-                         CompilationContext &context,
-                         llvm::Value *iterator_ptr,
-                         const planner::IndexScanPlan &index_scan) const;
 
   /// Given a table instance, return the number of tile groups in the table.
   llvm::Value *GetTileGroupCount(CodeGen &codegen,

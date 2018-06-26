@@ -37,6 +37,10 @@ class ExecutorContext {
   ExecutorContext(concurrency::TransactionContext *transaction,
                   codegen::QueryParameters parameters = {});
 
+  ExecutorContext(concurrency::TransactionContext *transaction,
+                  planner::AbstractPlan *plan,                  
+                  codegen::QueryParameters parameters = {});
+
   /// This class cannot be copy or move-constructed
   DISALLOW_COPY_AND_MOVE(ExecutorContext);
 
@@ -60,6 +64,8 @@ class ExecutorContext {
 
   /// Return the memory pool for this particular query execution
   type::EphemeralPool *GetPool();
+
+  planner::AbstractPlan *GetPlan() const;
 
   class ThreadStates {
    public:
@@ -105,6 +111,7 @@ class ExecutorContext {
   type::EphemeralPool pool_;
   // Container for all states of all thread participating in this execution
   ThreadStates thread_states_;
+  planner::AbstractPlan *plan_;  
 };
 
 template <typename T>

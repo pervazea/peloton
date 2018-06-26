@@ -20,6 +20,7 @@ namespace peloton {
 namespace codegen {
 
 PROXY(IndexScanIterator) {
+  // defines access to the constructor
   DECLARE_MEMBER(0, char[sizeof(util::IndexScanIterator)], opaque);
   DECLARE_TYPE;
 
@@ -29,11 +30,6 @@ PROXY(IndexScanIterator) {
   DECLARE_METHOD(GetTileGroupId);
   DECLARE_METHOD(GetTileGroupOffset);  
   DECLARE_METHOD(RowOffsetInResult);
-  DECLARE_METHOD(UpdateTupleWithInteger);
-  DECLARE_METHOD(UpdateTupleWithBigInteger);
-  DECLARE_METHOD(UpdateTupleWithDouble);
-  DECLARE_METHOD(UpdateTupleWithVarchar);
-  DECLARE_METHOD(UpdateTupleWithBoolean);
 };
 
 TYPE_BUILDER(IndexScanIterator, util::IndexScanIterator);

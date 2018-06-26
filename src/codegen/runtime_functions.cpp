@@ -265,15 +265,11 @@ void RuntimeFunctions::ThrowOverflowException() {
   throw std::overflow_error("ERROR: overflow");
 }
 
-util::IndexScanIterator *RuntimeFunctions::GetIterator(index::Index *index,
-                                                       int64_t point_key_p,
-                                                       int64_t low_key_p,
-                                                       int64_t high_key_p) {
-util::IndexScanIterator *iterator = new util::IndexScanIterator(
-  index,
-  (storage::Tuple *) point_key_p,
-  (storage::Tuple *) low_key_p,
-  (storage::Tuple *) high_key_p);
+util::IndexScanIterator *RuntimeFunctions::GetIterator(
+                           index::Index *index,
+                           executor::ExecutorContext *executor_context) {
+util::IndexScanIterator *iterator =
+  new util::IndexScanIterator(index, executor_context);
  return iterator;
 }
 

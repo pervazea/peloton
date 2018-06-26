@@ -36,8 +36,7 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
     SetForUpdateFlag(true);
   }
 
-  // values_with_params_ i.e. PARAMETER_VALUES with values to be bound
-  // later. 
+  // values_with_params_ i.e. PARAMETER_VALUES with values to be bound later
   for (auto val : values_with_params_) {
     values_.push_back(val.Copy());
   }
@@ -129,62 +128,6 @@ void IndexScanPlan::SetIndexPredicate(index::Index *index_p) {
                                                GetExprTypes());
 }
 
-#ifdef notdef  
-hash_t IndexScanPlan::Hash() const {
-  auto type = GetPlanNodeType();
-  hash_t hash = HashUtil::Hash(&type);
-  LOG_DEBUG("type hash: %lu", hash);
-
-  auto table_hash = GetTable()->Hash();
-  LOG_DEBUG("table hash: %lu", table_hash);
-
-  hash = HashUtil::CombineHashes(hash, GetTable()->Hash());
-  LOG_DEBUG(" --hash now: %lu", hash);
-
-  if (GetPredicate() != nullptr) {
-    auto pred_hash = GetPredicate()->Hash();
-    LOG_DEBUG("pred hash: %lu", pred_hash);  
-    hash = HashUtil::CombineHashes(hash, GetPredicate()->Hash());
-    LOG_DEBUG(" --hash now: %lu", hash);    
-  }
-
-  for (auto &column_id : GetColumnIds()) {
-    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&column_id));
-    LOG_DEBUG(" --hash now: %lu", hash);    
-  }
-
-  // hash the index id
-  hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&index_id_));
-  LOG_DEBUG(" --hash now: %lu", hash);
-
-  // hash the type of index scan
-  /* TODO: examine
-   * 1. Hash type of index scan
-   * 2. Hash predicate
-   * 3. This hashes only 1 conjunction. Is that all we support? Should
-   * assert that we only have one or properly handle as many as there are.
-   */
-  const index::ConjunctionScanPredicate *csp =
-      &(index_predicate_.GetConjunctionList()[0]);
-  if ( csp ) {
-    // TODO - is it valid for csp to be null?
-    auto is_point_query = csp->IsPointQuery();
-    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_point_query));
-    auto is_full_scan = csp->IsFullIndexScan();
-    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_full_scan));
-    LOG_DEBUG(" --hash now: %lu", hash);
-  }
-
-  auto is_update = IsForUpdate();
-  hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_update));
-  LOG_DEBUG(" --hash now: %lu", hash);            
-
-  hash = HashUtil::CombineHashes(hash, AbstractPlan::Hash());
-  LOG_DEBUG(" final hash: %lu", hash);
-  return hash;
-}  
-#endif /* notdef */
-  
 hash_t IndexScanPlan::Hash() const {
   // start with node type (index scan plan)
   auto type = GetPlanNodeType();
@@ -206,33 +149,27 @@ hash_t IndexScanPlan::Hash() const {
   // add the id of the index
   hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&index_id_));
 
-  // hash the type of index scan
-  /* TODO: examine
-   * 1. Hash type of index scan
-   * 2. Hash predicate
-   * 3. This hashes only 1 conjunction. Is that all we support? Should
-   * assert that we only have one or properly handle as many as there are.
-   */
+
+  // TODO: delegate csp hash construction to the csp object
+  
+  // TODO: modify for codegen to deprecate use of the csp (which is
+  // not thread safe). Use the executor context, with added information.
   const index::ConjunctionScanPredicate *csp =
       &(index_predicate_.GetConjunctionList()[0]);
-  if ( csp ) {
-    // TODO - is it valid for csp to be null?
-    auto is_point_query = csp->IsPointQuery();
-    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_point_query));
-    auto is_full_scan = csp->IsFullIndexScan();
-    hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_full_scan));
-  }
 
-  /*
-  auto &index_predicate = GetIndexPredicate();
-  (void) index_predicate;
-  */
+  // Hash type of index scan. Point scan or full index scan. If neither
+  // then implies range scan.
+  auto is_point_query = csp->IsPointQuery();
+  hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_point_query));
   
+  auto is_full_scan = csp->IsFullIndexScan();
+  hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_full_scan));  
+
   auto is_update = IsForUpdate();
   hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_update));
 
   hash = HashUtil::CombineHashes(hash, AbstractPlan::Hash());
-  return false;
+  return hash;
 }
 
 bool IndexScanPlan::operator==(const AbstractPlan &rhs) const {

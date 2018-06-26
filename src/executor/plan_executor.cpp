@@ -40,7 +40,7 @@ static void CompileAndExecutePlan(
     std::function<void(executor::ExecutionResult, std::vector<ResultValue> &&)>
         on_complete) {
   LOG_TRACE("Compiling and executing query ...");
-  LOG_DEBUG("%s", plan->GetInfo().c_str());  
+  LOG_TRACE("%s", plan->GetInfo().c_str());  
 
   // Perform binding
   planner::BindingContext context;
@@ -58,7 +58,7 @@ static void CompileAndExecutePlan(
   // Check if we have a cached compiled plan already
   codegen::Query *query = codegen::QueryCache::Instance().Find(plan);
   if (query == nullptr) {
-    LOG_DEBUG("not found in cache");
+    LOG_TRACE("not found in cache");
     // Cached plan doesn't exist, let's compile the query
     codegen::QueryCompiler compiler;
     auto compiled_query = compiler.Compile(
@@ -188,13 +188,13 @@ void PlanExecutor::ExecutePlan(
   bool codegen_enabled =
       settings::SettingsManager::GetBool(settings::SettingId::codegen);
 
-  LOG_DEBUG("%s", plan->GetInfo().c_str());
+  LOG_TRACE("%s", plan->GetInfo().c_str());
   try {
     if (codegen_enabled && codegen::QueryCompiler::IsSupported(*plan)) {
-      LOG_DEBUG("compile and execute");
+      LOG_TRACE("compile and execute");
       CompileAndExecutePlan(plan, txn, params, result_format, on_complete);
     } else {
-      LOG_DEBUG("interpret");
+      LOG_TRACE("interpret");
       InterpretPlan(plan, txn, params, result_format, on_complete);
     }
   } catch (Exception &e) {

@@ -599,28 +599,28 @@ class ConjunctionScanPredicate {
 
   /**
    * WIP
-   * Hash the predicate. 
-   * 
-   * Note: caller must handle late binding. Define.
+   * Hash the index predicate. 
    */
-  /*
   hash_t Hash() {
     hash_t hash = 0;
-    if (is_point_query_) {
-      // hash the low key, and address of is_point_query
-      hash = low_key_p_->HashCode();
-      hash = HashUtil::CombineHashes(hash, HashUtil::HashPtr(&is_point_query));
+    
+    if (is_point_query_) { 
+      hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&is_point_query_));
     } else if (full_index_scan_) {
-      // neither low_key_p_ or high_key_p_ is set
-      hash = HashUtil::HashPtr(&full_index_scan_);
-    } else {
-      // range scan
-      hash = low_key_p_->HashCode();
-      hash = HashUtil::CombineHashes(hash, high_key_p_->HashCode());
+      hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&full_index_scan_));
     }
+    // otherwise it is a range scan
+    
+    // TODO hash in the column information
+    /*
+    for (oid_t tuple_column : column_id_list) {
+      hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&tuple_column));
+    }
+    */
+    
+    // TODO hash in the predicate
     return hash;
   }
-  */
 };
 
 /////////////////////////////////////////////////////////////////////

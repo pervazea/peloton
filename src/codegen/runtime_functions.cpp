@@ -266,10 +266,10 @@ void RuntimeFunctions::ThrowOverflowException() {
 }
 
 util::IndexScanIterator *RuntimeFunctions::GetIterator(
-                           index::Index *index,
-                           executor::ExecutorContext *executor_context) {
+                           executor::ExecutorContext *executor_context,
+                           index::Index *index) {
 util::IndexScanIterator *iterator =
-  new util::IndexScanIterator(index, executor_context);
+  new util::IndexScanIterator(executor_context, index);
  return iterator;
 }
 

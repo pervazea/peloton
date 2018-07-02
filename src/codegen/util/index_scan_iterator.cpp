@@ -26,8 +26,10 @@ namespace util {
  * not thread safe or general.
  */
   
-IndexScanIterator::IndexScanIterator(index::Index *index,
-                                     executor::ExecutorContext *executor_context) {
+IndexScanIterator::IndexScanIterator(
+    executor::ExecutorContext *executor_context,
+    index::Index *index) {
+
   index_ = index;
   planner::AbstractPlan *plan_root = executor_context->GetPlan();
   const planner::IndexScanPlan *plan = FindIndexPlan(plan_root);

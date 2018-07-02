@@ -138,8 +138,9 @@ class RuntimeFunctions {
    */
   static void ThrowOverflowException();
   
-  static util::IndexScanIterator *GetIterator(index::Index *index,
-                                              executor::ExecutorContext *executor_context);
+  static util::IndexScanIterator *GetIterator(
+      executor::ExecutorContext *executor_context,
+      index::Index *index);
 
   static void DeleteIterator(util::IndexScanIterator *iterator);
 

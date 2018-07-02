@@ -46,8 +46,10 @@ class IndexScanIterator {
    * @param[in]   executor_context. Runtime values for query parameters
    */
   
-  IndexScanIterator(index::Index *index,
-                    executor::ExecutorContext *executor_context);
+  IndexScanIterator(executor::ExecutorContext *executor_context,
+                    index::Index *index);
+  // const std::vector<oid_t> *column_ids);
+  
   /**
    * Iterate over the index and save results in temporary storage.
    */

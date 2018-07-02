@@ -149,7 +149,6 @@ hash_t IndexScanPlan::Hash() const {
   // add the id of the index
   hash = HashUtil::CombineHashes(hash, HashUtil::Hash(&index_id_));
 
-
   // TODO: delegate csp hash construction to the csp object
   
   // TODO: modify for codegen to deprecate use of the csp (which is

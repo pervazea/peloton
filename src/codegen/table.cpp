@@ -18,6 +18,7 @@
 #include "codegen/lang/if.h"
 #include "codegen/proxy/index_scan_iterator_proxy.h"
 #include "codegen/proxy/runtime_functions_proxy.h"
+#include "codegen/vector.h"
 #include "codegen/proxy/zone_map_proxy.h"
 #include "storage/data_table.h"
 
@@ -95,11 +96,6 @@ void Table::GenerateScan(CodeGen &codegen, llvm::Value *table_ptr,
                  {predicate_ptr, predicate_array});
   }
 
-  /* PA -  was
-  llvm::Value *tile_group_idx = codegen.Const64(0);
-  // Get the number of tile groups in the given table  
-  llvm::Value *num_tile_groups = GetTileGroupCount(codegen, table_ptr);
-  */
   // Get the number of tile groups in the given table
   llvm::Value *tile_group_idx =
       (tilegroup_start != nullptr ? tilegroup_start : codegen.Const64(0));
@@ -179,7 +175,8 @@ void Table::GenerateIndexScan(CodeGen &codegen,
                               llvm::Value *index_ptr,
                               const planner::IndexScanPlan &index_scan) const {
 
-  (void) csp;
+  (void) csp;  // remove csp
+  
   // Allocate some space for the column layouts
   const auto num_columns =
       static_cast<uint32_t>(table_.GetSchema()->GetColumnCount());
@@ -199,19 +196,31 @@ void Table::GenerateIndexScan(CodeGen &codegen,
                  {predicate_ptr, predicate_array});
   }
 
+  // construct array of column ids GetKeyColumnIds()
+  // type = oid_t, size taken from plan
+  auto plan_key_column_id_vec = index_scan.GetKeyColumnIds();
+  auto kci_size = plan_key_column_id_vec.size();
+  llvm::Value *raw_column_vec = codegen.AllocateBuffer(codegen.Int32Type(),
+                                                       kci_size,
+                                                       "keyColumnIds");
+  Vector key_column_ids(raw_column_vec, kci_size, codegen.Int32Type());
+  // populate key_column_ids
+  for (uint32_t i=0; i<kci_size; i++) {
+    llvm::Value *key_col_index = codegen.Const32(i);
+    llvm::Value *key_col_value = codegen.Const32(plan_key_column_id_vec[i]);
+    key_column_ids.SetValue(codegen, key_col_index, key_col_value);
+  }
+  
+  // construct array of expressions GetExprTypes()
+  // TODO
+
   // Get the iterator, to iterate over the index values.
-  // The keys have been set according to it being a point scan,
-  // range scan or full scan
   llvm::Value *iterator_ptr =
     codegen.Call(RuntimeFunctionsProxy::GetIterator,
-                 {index_ptr,
-                     context.GetExecutionConsumer().GetExecutorContextPtr(context)});
+                 {context.GetExecutionConsumer().GetExecutorContextPtr(context),
+                     index_ptr});
 
-  (void) context;
   (void) index_scan;
-  // before doing scan, update the tuple with parameter cache!
-  //SetIndexPredicate(codegen, context, iterator_ptr, index_scan);
-
   // DoScan extracts data from the index and keeps the results, to be
   // retrieved via subsequent calls to the proxy
   codegen.Call(IndexScanIteratorProxy::DoScan, {iterator_ptr});

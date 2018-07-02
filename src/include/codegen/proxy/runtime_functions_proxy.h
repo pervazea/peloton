@@ -38,6 +38,19 @@ PROXY(Type) {
   DECLARE_TYPE;
 };
 
+/*
+PROXY(KeyColumnId) {
+  DECLARE_MEMBER(0, uint32_t, key_column_id);
+  DECLARE_TYPE;  
+};
+
+PROXY(KeyColumnIds) {
+  // need c++ structure class ....
+  DECLARE_MEMBER(0, KeyColumnId *, key_column_ids);
+  DECLARE_TYPE;
+} 
+*/  
+
 PROXY(RuntimeFunctions) {
   DECLARE_METHOD(HashMurmur3);
   DECLARE_METHOD(HashCrc64);

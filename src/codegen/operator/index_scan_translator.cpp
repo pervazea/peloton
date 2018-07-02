@@ -107,6 +107,8 @@ public:
                               llvm::Value *tid_end,
                               Vector &selection_vector) const;
 
+  void PerformReads(CodeGen &codegen, Vector &selection_vector) const;
+
   // Filter all the rows whose TIDs are in the range [tid_start, tid_end] and
   // store their TIDs in the output TID selection vector
   void FilterRowsByPredicate(CodeGen &codegen,
@@ -263,6 +265,8 @@ void IndexScanTranslator::ScanConsumer::ProcessTuples(
                           selection_vector_);
   }
 
+  PerformReads(codegen, selection_vector_);
+
   // 3. Setup the (filtered) row batch and setup attribute accessors
   RowBatch batch{ctx_.GetCompilationContext(), tile_group_id_, tid_start,
                  tid_end, selection_vector_, true};
@@ -309,11 +313,19 @@ void IndexScanTranslator::ScanConsumer::FilterRowsByVisibility(
   llvm::Value *txn = ec.GetTransactionPtr(ctx_.GetCompilationContext());
   llvm::Value *raw_sel_vec = selection_vector.GetVectorPtr();
 
+  // Invoke TransactionRuntime::PerformVisibilityCheck(...)
+  llvm::Value *out_idx =
+    codegen.Call(TransactionRuntimeProxy::PerformVisibilityCheck,
+                 {txn, tile_group_ptr_, tid_start, tid_end, raw_sel_vec});
+  selection_vector.SetNumElements(out_idx);
+
+  /*
   // Invoke TransactionRuntime::PerformRead(...)
   llvm::Value *out_idx =
       codegen.Call(TransactionRuntimeProxy::PerformVectorizedRead,
                    {txn, tile_group_ptr_, tid_start, tid_end, raw_sel_vec});
   selection_vector.SetNumElements(out_idx);
+  */
 }
 
   /*
@@ -361,6 +373,23 @@ void IndexScanTranslator::ScanConsumer::FilterRowsByPredicate(
     row.SetValidity(codegen, bool_val);
   });
 }
+
+void IndexScanTranslator::ScanConsumer::PerformReads(
+    CodeGen &codegen, Vector &selection_vector) const {
+  ExecutionConsumer &ec = ctx_.GetCompilationContext().GetExecutionConsumer();
+  llvm::Value *txn = ec.GetTransactionPtr(ctx_.GetCompilationContext());
+  llvm::Value *raw_sel_vec = selection_vector.GetVectorPtr();
+
+  llvm::Value *is_for_update = codegen.ConstBool(index_plan_.IsForUpdate());
+  llvm::Value *end_idx = selection_vector.GetNumElements();
+
+  // Invoke TransactionRuntime::PerformVectorizedRead(...)
+  llvm::Value *out_idx =
+      codegen.Call(TransactionRuntimeProxy::PerformVectorizedRead,
+                   {txn, tile_group_ptr_, raw_sel_vec, end_idx, is_for_update});
+  selection_vector.SetNumElements(out_idx);
+}
+  
 
 }  // namespace codegen
 }  // namespace peloton

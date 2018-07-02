@@ -42,6 +42,7 @@ namespace codegen {
 //===----------------------------------------------------------------------===//
 class TransactionRuntime {
  public:
+
   /**
    * Perform a read operation for all visible tuples in the given tile group
    * with IDs in the range [tid_start, tid_end] in the context of the 
@@ -55,10 +56,17 @@ class TransactionRuntime {
    * 
    * @return index of the next free slot in the selection vector?
    */
+  static uint32_t PerformVisibilityCheck(concurrency::TransactionContext &txn,
+                                         storage::TileGroup &tile_group,
+                                         uint32_t tid_start, uint32_t tid_end,
+                                         uint32_t *selection_vector);
+
+  // Perform a read operation for all tuples in the given tile group with IDs
+  // in the range [tid_start, tid_end) in the context of the given transaction
   static uint32_t PerformVectorizedRead(concurrency::TransactionContext &txn,
                                         storage::TileGroup &tile_group,
-                                        uint32_t tid_start, uint32_t tid_end,
-                                        uint32_t *selection_vector);
+                                        uint32_t *selection_vector,
+                                        uint32_t end_idx, bool is_for_update);
   // Check Ownership
   static bool IsOwner(concurrency::TransactionContext &txn,
                       storage::TileGroupHeader *tile_group_header,

@@ -63,6 +63,7 @@ static void CompileAndExecutePlan(
     codegen::QueryCompiler compiler;
     auto compiled_query = compiler.Compile(
         *plan, executor_context.GetParams().GetQueryParametersMap(), consumer);
+    compiled_query->Compile();
 
     // Grab an instance to the plan
     query = compiled_query.get();

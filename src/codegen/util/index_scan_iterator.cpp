@@ -65,6 +65,10 @@ void IndexScanIterator::DoScan() {
   } else if (is_full_scan_) {
     index_->ScanAllKeys(result_);
   } else {
+    /* FIX
+     * The handling of scan ranges in the bw tree index
+     * does not look thread safe.
+     */
     index_->CodeGenRangeScan(low_key_p_, high_key_p_, result_);
   }
   // LOG_DEBUG("result size = %lu\n", result_.size());

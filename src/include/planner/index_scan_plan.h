@@ -217,8 +217,6 @@ class IndexScanPlan : public AbstractScan {
     return !(*this == rhs);
   }
 
-  void PerformBinding(BindingContext &binding_context) override;  
-
   virtual void VisitParameters(
     codegen::QueryParametersMap &map,
     std::vector<peloton::type::Value> &values,

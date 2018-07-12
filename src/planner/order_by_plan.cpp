@@ -42,17 +42,21 @@ void OrderByPlan::PerformBinding(BindingContext &binding_context) {
   // Let the child do its binding first
   AbstractPlan::PerformBinding(binding_context);
 
-  PELOTON_ASSERT(output_ais_.size() == 0);
-  for (const oid_t col_id : GetOutputColumnIds()) {
-    auto *ai = binding_context.Find(col_id);
-    PELOTON_ASSERT(ai != nullptr);
-    output_ais_.push_back(ai);
+  // PELOTON_ASSERT(output_ais_.size() == 0);
+  if (output_ais_.size() == 0) {
+    for (const oid_t col_id : GetOutputColumnIds()) {
+      auto *ai = binding_context.Find(col_id);
+      PELOTON_ASSERT(ai != nullptr);
+      output_ais_.push_back(ai);
+    }
   }
 
-  for (const oid_t sort_key_col_id : GetSortKeys()) {
-    auto *ai = binding_context.Find(sort_key_col_id);
-    PELOTON_ASSERT(ai != nullptr);
-    sort_key_ais_.push_back(ai);
+  if (sort_key_ais_.size() == 0) {
+    for (const oid_t sort_key_col_id : GetSortKeys()) {
+      auto *ai = binding_context.Find(sort_key_col_id);
+      PELOTON_ASSERT(ai != nullptr);
+      sort_key_ais_.push_back(ai);
+    }
   }
 }
 

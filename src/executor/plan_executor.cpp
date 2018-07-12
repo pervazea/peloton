@@ -40,16 +40,16 @@ static void CompileAndExecutePlan(
     std::function<void(executor::ExecutionResult, std::vector<ResultValue> &&)>
         on_complete) {
   LOG_TRACE("Compiling and executing query ...");
-  LOG_TRACE("%s", plan->GetInfo().c_str());
   LOG_DEBUG("%s", plan->GetInfo().c_str());    
 
   // Perform binding
   planner::BindingContext context;
-  LOG_DEBUG("bound %d", plan->IsBound());
-  if ( !(plan->IsBound()) ) {
-      plan->PerformBinding(context);
-      plan->SetBound();
-  }
+  LOG_TRACE("bound %d", plan->IsBound());
+  // binding suppression at this level does not work. Context
+  // information has to be initialized.
+  // TODO remove unused portions of binding suppression.
+  plan->PerformBinding(context);
+  plan->SetBound();
   
   // Prepare output buffer
   std::vector<oid_t> columns;

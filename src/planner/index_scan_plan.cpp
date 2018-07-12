@@ -60,17 +60,6 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
   return;
 }
 
-void IndexScanPlan::PerformBinding(BindingContext &binding_context) {
-  AbstractScan::PerformBinding(binding_context);
-
-  /*
-  for (auto &child : GetChildren()) {
-    BindingContext child_context;
-    child->PerformBinding(child_context);
-  }
-  */
-}
-
 /**
  * Set actual values for PARAMETER_VALUE query arguments, i.e.
  * late binding of values for prepared statements.

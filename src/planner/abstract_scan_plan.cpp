@@ -40,13 +40,15 @@ void AbstractScan::PerformBinding(BindingContext &binding_context) {
       LOG_DEBUG("column_ids_.size() = %lu", GetColumnIds().size());
     }
 
-    // Collect _all_ table columns
-    const auto *schema = GetTable()->GetSchema();
-    for (oid_t col_id = 0; col_id < schema->GetColumnCount(); col_id++) {
-      const auto column = schema->GetColumn(col_id);
-      bool nullable = schema->AllowNull(col_id);
-      auto type = codegen::type::Type{column.GetType(), nullable};
-      attributes_.push_back(AttributeInfo{type, col_id, column.GetName()});
+    if ( attributes_.size() == 0 ) {
+      // Collect _all_ table columns
+      const auto *schema = GetTable()->GetSchema();
+      for (oid_t col_id = 0; col_id < schema->GetColumnCount(); col_id++) {
+        const auto column = schema->GetColumn(col_id);
+        bool nullable = schema->AllowNull(col_id);
+        auto type = codegen::type::Type{column.GetType(), nullable};
+        attributes_.push_back(AttributeInfo{type, col_id, column.GetName()});
+      }
     }
 
     // Perform attribute binding only for actual output columns

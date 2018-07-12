@@ -64,8 +64,9 @@ class IndexScanTranslatorTest : public PelotonCodeGenTest {
     std::unique_ptr<catalog::Schema> schema{new catalog::Schema(cols)};
 
     // Insert table in catalog
-    catalog->CreateTable(test_db_name, DEFAULT_SCHEMA_NAME, table_name_,
-                         std::move(schema), txn);
+    catalog->CreateTable(txn, test_db_name, DEFAULT_SCHEMA_NAME,
+                         std::move(schema), 
+                         table_name_, false);
     txn_manager.CommitTransaction(txn);
 
     storage::DataTable *table = GetTableWithIndex();
@@ -168,10 +169,9 @@ class IndexScanTranslatorTest : public PelotonCodeGenTest {
     auto *catalog = catalog::Catalog::GetInstance();
     auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
     auto *txn = txn_manager.BeginTransaction();
-    auto table = catalog->GetTableWithName(test_db_name,
+    auto table = catalog->GetTableWithName(txn, test_db_name,
                                            DEFAULT_SCHEMA_NAME,
-                                           table_name_,
-                                           txn);
+                                           table_name_);
     txn_manager.CommitTransaction(txn);
     return table;
   }

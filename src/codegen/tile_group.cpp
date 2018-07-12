@@ -87,6 +87,7 @@ void TileGroup::GenerateIndexScan(CodeGen &codegen,
   auto col_layouts = GetColumnLayouts(codegen, tile_group_ptr, column_layouts);
 
   TileGroupAccess tile_group_access{*this, col_layouts};
+  // todo - fix to process groups of tuples from the iterator
   consumer.ProcessTuples(codegen,
                          tile_group_offset,
                          codegen->CreateAdd(tile_group_offset,

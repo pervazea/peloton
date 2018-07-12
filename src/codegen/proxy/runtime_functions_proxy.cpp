@@ -29,6 +29,8 @@ DEFINE_TYPE(AbstractExpression, "peloton::expression::AbstractExpression",
 
 DEFINE_TYPE(Type, "peloton::Type", opaque);
 
+//DEFINE_TYPE(ExpressionType, "peloton::ExpressionType", opaque);
+
 DEFINE_METHOD(peloton::codegen, RuntimeFunctions, HashMurmur3);
 DEFINE_METHOD(peloton::codegen, RuntimeFunctions, HashCrc64);
 DEFINE_METHOD(peloton::codegen, RuntimeFunctions, GetTileGroup);

@@ -51,6 +51,10 @@ const std::string AbstractPlan::GetInfo() const {
   std::ostringstream os;
   os << PlanNodeTypeToString(GetPlanNodeType())
      << " [NumChildren=" << children_.size() << "]";
+  for (uint i=0; i<GetChildrenSize(); i++) {
+    os << "\n";
+    os << GetChild(i)->GetInfo() << "\n";
+  }
   return os.str();
 }
 

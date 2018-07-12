@@ -267,7 +267,11 @@ void RuntimeFunctions::ThrowOverflowException() {
 
 util::IndexScanIterator *RuntimeFunctions::GetIterator(
                            executor::ExecutorContext *executor_context,
-                           index::Index *index) {
+                           index::Index *index,
+                           uint32_t *key_col_id,
+                           uint32_t *expr) {
+  (void) key_col_id;
+  (void) expr;
 util::IndexScanIterator *iterator =
   new util::IndexScanIterator(executor_context, index);
  return iterator;

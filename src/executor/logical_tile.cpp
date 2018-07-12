@@ -466,7 +466,10 @@ std::vector<std::vector<std::string>> LogicalTile::GetAllValuesAsStrings(
       } else {
         auto data_length =
             cp.base_tile->GetSchema()->GetLength(cp.origin_column_id);
-        LOG_TRACE("data length: %ld", data_length);
+        // LOG_INFO("data length: %ld", data_length);
+        // LOG_INFO("column content: [%s]", val.ToString().c_str());
+        // LOG_INFO("column type desired %d", result_format[column_itr]);
+        
         char *val_binary = new char[data_length];
         bool is_inlined = false;
 

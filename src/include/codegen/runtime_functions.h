@@ -137,14 +137,20 @@ class RuntimeFunctions {
    * Throw a mathematical overflow exception. This function does not return.
    */
   static void ThrowOverflowException();
-  
-  static util::IndexScanIterator *GetIterator(
-      executor::ExecutorContext *executor_context,
-      index::Index *index);
-
-  static void DeleteIterator(util::IndexScanIterator *iterator);
 
   static void ThrowInvalidInputStringException();
+  
+  /* --------------------------
+   * Index scan related methods
+   * --------------------------
+   */
+  static util::IndexScanIterator *GetIterator(
+      executor::ExecutorContext *executor_context,
+      index::Index *index,
+      uint32_t *key_col_id,
+      uint32_t *expr);
+
+  static void DeleteIterator(util::IndexScanIterator *iterator);
 };
 
 }  // namespace codegen

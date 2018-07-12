@@ -40,17 +40,22 @@ static void CompileAndExecutePlan(
     std::function<void(executor::ExecutionResult, std::vector<ResultValue> &&)>
         on_complete) {
   LOG_TRACE("Compiling and executing query ...");
-  LOG_TRACE("%s", plan->GetInfo().c_str());  
+  LOG_TRACE("%s", plan->GetInfo().c_str());
+  LOG_DEBUG("%s", plan->GetInfo().c_str());    
 
   // Perform binding
   planner::BindingContext context;
-  plan->PerformBinding(context);
-
+  LOG_DEBUG("bound %d", plan->IsBound());
+  if ( !(plan->IsBound()) ) {
+      plan->PerformBinding(context);
+      plan->SetBound();
+  }
+  
   // Prepare output buffer
   std::vector<oid_t> columns;
   plan->GetOutputColumns(columns);
   codegen::BufferingConsumer consumer{columns, context};
-
+  
   // The executor context for this execution
   executor::ExecutorContext executor_context{
     txn, plan.get(), codegen::QueryParameters(*plan, params)};
@@ -97,12 +102,13 @@ static void CompileAndExecutePlan(
         if (col_type == type::TypeId::VARBINARY) {
           col_length = tuple.tuple_[i].GetLength();
         } else {
-          col_length = sizeof(col_type);
+          col_length = type::Type::GetTypeSize((col_type));
         }
         char *val_binary = new char[col_length];
-        //LOG_INFO("column content: [%s]", str.c_str());
-        //LOG_INFO("column type desired %d", result_format[i]);
-        //LOG_INFO("column length %lu", col_length);
+        //auto str = column_val.IsNull() ? "" : column_val.ToString(); //debug
+        // LOG_INFO("column content: [%s]", str.c_str());
+        // LOG_INFO("column type desired %d", result_format[i]);
+        // LOG_INFO("column length %lu", col_length);
         column_val.SerializeTo(val_binary, is_inlined, nullptr);
         // hton
         for (size_t i = 0; i < (col_length >> 1); ++i) {

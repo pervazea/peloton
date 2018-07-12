@@ -60,6 +60,17 @@ IndexScanPlan::IndexScanPlan(storage::DataTable *table,
   return;
 }
 
+void IndexScanPlan::PerformBinding(BindingContext &binding_context) {
+  AbstractScan::PerformBinding(binding_context);
+
+  /*
+  for (auto &child : GetChildren()) {
+    BindingContext child_context;
+    child->PerformBinding(child_context);
+  }
+  */
+}
+
 /**
  * Set actual values for PARAMETER_VALUE query arguments, i.e.
  * late binding of values for prepared statements.
@@ -220,6 +231,20 @@ bool IndexScanPlan::operator==(const AbstractPlan &rhs) const {
     return false;
 
   return AbstractPlan::operator==(rhs);
+}
+
+const std::string IndexScanPlan::GetInfo() const {
+  std::ostringstream os;
+  os << PlanNodeTypeToString(GetPlanNodeType())
+     << " [NumChildren=" << GetChildrenSize() << "]";
+  os << " [Predicate]" << "\n";
+  os << " " << GetPredicateInfo();
+  os << " [Children]" << "\n";  
+  for (uint i=0; i<GetChildrenSize(); i++) {
+    os << "\n";
+    os << GetChild(i)->GetInfo() << "\n";
+  }
+  return os.str();
 }
 
 }  // namespace planner

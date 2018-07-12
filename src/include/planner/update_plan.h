@@ -47,7 +47,9 @@ class UpdatePlan : public AbstractPlan {
 
   PlanNodeType GetPlanNodeType() const override { return PlanNodeType::UPDATE; }
 
+  /*
   const std::string GetInfo() const override { return "UpdatePlan"; }
+  */
 
   std::unique_ptr<AbstractPlan> Copy() const override {
     return std::unique_ptr<AbstractPlan>(

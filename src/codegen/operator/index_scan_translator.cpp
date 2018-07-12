@@ -95,10 +95,6 @@ public:
   void TileGroupFinish(CodeGen &, llvm::Value *) override {}
 
  private:
-  // Get the predicate, if one exists
-  // ???
-  // const expression::AbstractExpression *GetPredicate() const;
-
   void SetupRowBatch(RowBatch &batch,
                      TileGroup::TileGroupAccess &tile_group_access,
                      std::vector<AttributeAccess> &access) const;
@@ -197,7 +193,6 @@ void IndexScanTranslator::Produce() const {
     llvm::Value *out_idx = codegen.Const32(0);  
     sel_vec.SetNumElements(out_idx);
 
-    // TODO - examine
     auto predicate = const_cast<expression::AbstractExpression *>(
       GetIndexScanPlan().GetPredicate());
     
@@ -313,28 +308,11 @@ void IndexScanTranslator::ScanConsumer::FilterRowsByVisibility(
   llvm::Value *txn = ec.GetTransactionPtr(ctx_.GetCompilationContext());
   llvm::Value *raw_sel_vec = selection_vector.GetVectorPtr();
 
-  // Invoke TransactionRuntime::PerformVisibilityCheck(...)
   llvm::Value *out_idx =
     codegen.Call(TransactionRuntimeProxy::PerformVisibilityCheck,
                  {txn, tile_group_ptr_, tid_start, tid_end, raw_sel_vec});
   selection_vector.SetNumElements(out_idx);
-
-  /*
-  // Invoke TransactionRuntime::PerformRead(...)
-  llvm::Value *out_idx =
-      codegen.Call(TransactionRuntimeProxy::PerformVectorizedRead,
-                   {txn, tile_group_ptr_, tid_start, tid_end, raw_sel_vec});
-  selection_vector.SetNumElements(out_idx);
-  */
 }
-
-  /*
-// Get the predicate, if one exists
-const expression::AbstractExpression *
-IndexScanTranslator::ScanConsumer::GetPredicate() const {
-  return translator_.GetScanPlan().GetPredicate();
-}
-  */
 
 void IndexScanTranslator::ScanConsumer::FilterRowsByPredicate(
     CodeGen &codegen, const TileGroup::TileGroupAccess &access,
@@ -389,7 +367,6 @@ void IndexScanTranslator::ScanConsumer::PerformReads(
                    {txn, tile_group_ptr_, raw_sel_vec, end_idx, is_for_update});
   selection_vector.SetNumElements(out_idx);
 }
-  
 
 }  // namespace codegen
 }  // namespace peloton

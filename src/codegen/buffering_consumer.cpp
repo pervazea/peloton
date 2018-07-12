@@ -63,8 +63,10 @@ DEFINE_METHOD(peloton::codegen, BufferingConsumer, BufferTuple);
 
 BufferingConsumer::BufferingConsumer(const std::vector<oid_t> &cols,
                                      const planner::BindingContext &context) {
+  PELOTON_ASSERT(output_ais_.size() == 0);
   for (oid_t col_id : cols) {
     output_ais_.push_back(context.Find(col_id));
+    PELOTON_ASSERT(output_ais_[col_id] != 0);
   }
 }
 
@@ -109,6 +111,7 @@ void BufferingConsumer::ConsumeResult(ConsumerContext &ctx,
 
   for (uint32_t i = 0; i < num_cols; i++) {
     // Derive the column's final value
+
     Value val = row.DeriveValue(codegen, output_ais_[i]);
 
     PELOTON_ASSERT(output_ais_[i]->type == val.GetType());

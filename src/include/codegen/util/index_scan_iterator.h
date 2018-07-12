@@ -55,7 +55,8 @@ class IndexScanIterator {
    */
   void DoScan();
 
-  const planner::IndexScanPlan *FindIndexPlan(const planner::AbstractPlan *node);
+  const planner::IndexScanPlan *FindIndexPlan(const planner::AbstractPlan *node,
+                                              index::Index *index);
 
   uint64_t GetDistinctTileGroupNum() {
     return (uint64_t)distinct_tile_group_num_;

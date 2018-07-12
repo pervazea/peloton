@@ -29,11 +29,6 @@ namespace codegen {
 Table::Table(storage::DataTable &table)
     : table_(table), tile_group_(*table_.GetSchema()) {}
 
-  /*
-llvm::Value *Table::GetExecutorContextPtr() const {
-  return context_.GetExecutionConsumer().GetExecutorContextPtr(context_);
-  */
-
 // We determine tile group count by calling DataTable::GetTileGroupCount(...)
 llvm::Value *Table::GetTileGroupCount(CodeGen &codegen,
                                       llvm::Value *table_ptr) const {
@@ -125,7 +120,7 @@ void Table::GenerateScan(CodeGen &codegen, llvm::Value *table_ptr,
       // Inform the consumer that we're starting iteration over the tile group
       consumer.TileGroupStart(codegen, tile_group_id, tile_group_ptr);
 
-      // Generate the scan cover over the given tile group
+      // Generate the scan over over the given tile group
       tile_group_.GenerateTidScan(codegen, tile_group_ptr, column_layouts,
                                   batch_size, consumer);
 
@@ -141,7 +136,7 @@ void Table::GenerateScan(CodeGen &codegen, llvm::Value *table_ptr,
   }
 }
 
-// TODO - *** update comment  
+// TODO - *** update comment to reflect current code
 // Generate an index scan
 //
 // @code
@@ -174,8 +169,8 @@ void Table::GenerateIndexScan(CodeGen &codegen,
                               const index::ConjunctionScanPredicate *csp,
                               llvm::Value *index_ptr,
                               const planner::IndexScanPlan &index_scan) const {
-
   (void) csp;  // remove csp
+  (void) batch_size;  // unused  
   
   // Allocate some space for the column layouts
   const auto num_columns =
@@ -183,8 +178,6 @@ void Table::GenerateIndexScan(CodeGen &codegen,
   llvm::Value *column_layouts = codegen.AllocateBuffer(
       ColumnLayoutInfoProxy::GetType(codegen), num_columns, "columnLayout");
 
-  (void) batch_size;  // unused
-  
   // Allocate some space for the parsed predicates (if need be!)
   // Remove? Since no zone maps?
   llvm::Value *predicate_array =
@@ -192,14 +185,14 @@ void Table::GenerateIndexScan(CodeGen &codegen,
   if (num_predicates != 0) {
     predicate_array = codegen.AllocateBuffer(
         PredicateInfoProxy::GetType(codegen), num_predicates, "predicateInfo");
-    codegen.Call(RuntimeFunctionsProxy::FillPredicateArray,
+     codegen.Call(RuntimeFunctionsProxy::FillPredicateArray,
                  {predicate_ptr, predicate_array});
   }
 
   // construct array of column ids GetKeyColumnIds()
   // type = oid_t, size taken from plan
   auto plan_key_column_id_vec = index_scan.GetKeyColumnIds();
-  auto kci_size = plan_key_column_id_vec.size();
+  auto kci_size = plan_key_column_id_vec.size() ;
   llvm::Value *raw_column_vec = codegen.AllocateBuffer(codegen.Int32Type(),
                                                        kci_size,
                                                        "keyColumnIds");
@@ -210,17 +203,33 @@ void Table::GenerateIndexScan(CodeGen &codegen,
     llvm::Value *key_col_value = codegen.Const32(plan_key_column_id_vec[i]);
     key_column_ids.SetValue(codegen, key_col_index, key_col_value);
   }
-  
-  // construct array of expressions GetExprTypes()
-  // TODO
 
+  // construct array of expressions GetExprTypes()
+  auto plan_expr_type_vec = index_scan.GetExprTypes();
+  
+  llvm::Value *raw_expr_type_vec = codegen.AllocateBuffer(codegen.Int32Type(),
+                                                          kci_size,
+                                                          "exprTypeVec");
+  // initialize the expression type vector
+  Vector expr_type_vec(raw_expr_type_vec,
+                       kci_size,
+                       codegen.Int32Type());
+  for (uint32_t i=0; i<kci_size; i++) {
+    llvm::Value *expr_index = codegen.Const32(i);
+    auto plan_expr_type_val = plan_expr_type_vec[i];
+    llvm::Value *expr_type_val  = codegen.Const32((int32_t)plan_expr_type_val);
+    expr_type_vec.SetValue(codegen, expr_index, expr_type_val);
+  }
+
+  llvm::Value *expr_vec_ptr = expr_type_vec.GetVectorPtr();
   // Get the iterator, to iterate over the index values.
   llvm::Value *iterator_ptr =
     codegen.Call(RuntimeFunctionsProxy::GetIterator,
                  {context.GetExecutionConsumer().GetExecutorContextPtr(context),
-                     index_ptr});
+                     index_ptr,
+                     raw_column_vec,
+                     expr_vec_ptr});
 
-  (void) index_scan;
   // DoScan extracts data from the index and keeps the results, to be
   // retrieved via subsequent calls to the proxy
   codegen.Call(IndexScanIteratorProxy::DoScan, {iterator_ptr});
@@ -250,9 +259,7 @@ void Table::GenerateIndexScan(CodeGen &codegen,
     llvm::Value *tile_group_ptr = codegen.Call(
       RuntimeFunctionsProxy::GetTileGroupById, {table_ptr, tile_group_id});
 
-    // TODO: optimize to do metadata looks on the tile_group_id only
-    // once.
-    
+    // TODO: optimize to do metadata looks on the tile_group_id only once
     // initialize the consumer, to handle the tile_group
     consumer.TileGroupStart(codegen, tile_group_id, tile_group_ptr);
     

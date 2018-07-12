@@ -175,9 +175,7 @@ class IndexScanPlan : public AbstractScan {
 
   inline bool GetDescend() const { return descend_; }
 
-  const std::string GetInfo() const {
-    return "IndexScan(" + GetPredicateInfo() + ")";
-  }
+  const std::string GetInfo() const;
 
   void SetLimit(bool limit) { limit_ = limit; }
 
@@ -218,6 +216,8 @@ class IndexScanPlan : public AbstractScan {
   bool operator!=(const AbstractPlan &rhs) const override {
     return !(*this == rhs);
   }
+
+  void PerformBinding(BindingContext &binding_context) override;  
 
   virtual void VisitParameters(
     codegen::QueryParametersMap &map,

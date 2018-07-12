@@ -32,7 +32,8 @@ IndexScanIterator::IndexScanIterator(
 
   index_ = index;
   planner::AbstractPlan *plan_root = executor_context->GetPlan();
-  const planner::IndexScanPlan *plan = FindIndexPlan(plan_root);
+  const planner::IndexScanPlan *plan = FindIndexPlan(plan_root, index);
+
   PELOTON_ASSERT(plan);
 
   const index::ConjunctionScanPredicate *csp = 
@@ -42,16 +43,19 @@ IndexScanIterator::IndexScanIterator(
     is_point_query_ = true;
     is_full_scan_ = false;    
     point_key_p_ = const_cast<storage::Tuple *> (csp->GetPointQueryKey());
+    //LOG_DEBUG("is_point_scan");
   } else if (!csp->IsFullIndexScan()) {
     // range scan
     is_point_query_ = false;
     is_full_scan_ = false;
     low_key_p_ = const_cast<storage::Tuple *> (csp->GetLowKey());
     high_key_p_ = const_cast<storage::Tuple *> (csp->GetHighKey());
+    //LOG_DEBUG("is_range_scan");    
   } else {
     // full scan
     is_point_query_ = false;
     is_full_scan_ = true;
+    //LOG_DEBUG("is_full_scan");
   }
 }
 
@@ -63,8 +67,8 @@ void IndexScanIterator::DoScan() {
   } else {
     index_->CodeGenRangeScan(low_key_p_, high_key_p_, result_);
   }
-  LOG_DEBUG("result size = %lu\n", result_.size());
-  LogDoScanResults();
+  // LOG_DEBUG("result size = %lu\n", result_.size());
+  // LogDoScanResults();
 
   // TODO: fix whatever implementation deficiency this comment implies
   // TODO:
@@ -84,21 +88,34 @@ void IndexScanIterator::DoScan() {
  * values and use them to initialize the scan range, in a thread safe
  * manner.
  */  
-const planner::IndexScanPlan *IndexScanIterator::FindIndexPlan(const planner::AbstractPlan *node) {
+const planner::IndexScanPlan *IndexScanIterator::FindIndexPlan(
+    const planner::AbstractPlan *node,
+    index::Index *index) {
   const planner::IndexScanPlan *index_node = nullptr;
 
   if (node->GetPlanNodeType() == PlanNodeType::INDEXSCAN) {
-    return (reinterpret_cast<const planner::IndexScanPlan *> (node));
-  }
-
-  for (uint i=0; i<node->GetChildrenSize(); i++) {
-    const planner::AbstractPlan *child_node = node->GetChild(i);
-    index_node = FindIndexPlan(child_node);
-    if (index_node) {
-      return (index_node);
+    const planner::IndexScanPlan *index_plan =
+      reinterpret_cast<const planner::IndexScanPlan *> (node);
+    
+    if (index_plan->GetIndexId() == index->GetOid()) {
+      return (index_plan);
     }
   }
-  // not found, return nullptr
+
+  for (uint i=0; i<(node->GetChildrenSize()); i++) {
+    const planner::AbstractPlan *child_node = node->GetChild(i);
+    const planner::IndexScanPlan *ret_node = FindIndexPlan(child_node, index);
+    if (ret_node) {
+      return ret_node;
+      /*
+      if (index_node) {
+        LOG_ERROR("multi-index-scan tree");
+      }
+      // PELOTON_ASSERT(!index_node);
+      index_node = ret_node;
+      */
+    }
+  }
   return (index_node);
 }
 

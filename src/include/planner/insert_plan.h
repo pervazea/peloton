@@ -105,7 +105,11 @@ class InsertPlan : public AbstractPlan {
     return tuples_[tuple_idx].get();
   }
 
-  const std::string GetInfo() const override { return "InsertPlan"; }
+ /*
+  const std::string GetInfo() const override {
+    return "InsertPlan";
+  }
+ */
 
   void PerformBinding(BindingContext &binding_context) override;
 

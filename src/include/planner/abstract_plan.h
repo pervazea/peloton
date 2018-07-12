@@ -111,6 +111,14 @@ class AbstractPlan : public Printable {
 
   virtual std::unique_ptr<AbstractPlan> Copy() const = 0;
 
+  bool IsBound() {
+    return is_bound_;
+  }
+
+  void SetBound() {
+    is_bound_ = true;
+  }
+
   // A plan will be sent to anther node via serialization
   // So serialization should be implemented by the derived classes
 
@@ -156,6 +164,8 @@ class AbstractPlan : public Printable {
   // TODO: This field is harded coded now. This needs to be changed when
   // optimizer has the cost model and cardinality estimation
   int estimated_cardinality_ = 500000;
+
+  bool is_bound_ = false;
 
  private:
   DISALLOW_COPY_AND_MOVE(AbstractPlan);

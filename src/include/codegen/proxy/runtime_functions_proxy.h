@@ -39,17 +39,11 @@ PROXY(Type) {
 };
 
 /*
-PROXY(KeyColumnId) {
-  DECLARE_MEMBER(0, uint32_t, key_column_id);
-  DECLARE_TYPE;  
-};
-
-PROXY(KeyColumnIds) {
-  // need c++ structure class ....
-  DECLARE_MEMBER(0, KeyColumnId *, key_column_ids);
+PROXY(ExpressionType) {
+  DECLARE_MEMBER(0, char[sizeof(ExpressionType)], opaque);
   DECLARE_TYPE;
-} 
-*/  
+};
+*/ 
 
 PROXY(RuntimeFunctions) {
   DECLARE_METHOD(HashMurmur3);
@@ -69,6 +63,7 @@ PROXY(RuntimeFunctions) {
 TYPE_BUILDER(ColumnLayoutInfo, codegen::RuntimeFunctions::ColumnLayoutInfo);
 TYPE_BUILDER(AbstractExpression, expression::AbstractExpression);
 TYPE_BUILDER(Type, codegen::type::Type);
+//TYPE_BUILDER(ExpressionType, ExpressionType); 
 
 }  // namespace codegen
 }  // namespace peloton

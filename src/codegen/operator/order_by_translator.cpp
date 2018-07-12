@@ -152,8 +152,8 @@ OrderByTranslator::OrderByTranslator(const planner::OrderByPlan &plan,
   const auto &output_col_ids = plan.GetOutputColumnIds();
   for (uint32_t i = 0; i < output_ais.size(); i++) {
     const auto *ai = output_ais[i];
-    LOG_DEBUG("Adding output column %p (%s) to format @ %u", ai,
-              TypeIdToString(ai->type.type_id).c_str(), i);
+    //LOG_DEBUG("Adding output column %p (%s) to format @ %u", ai,
+    //          TypeIdToString(ai->type.type_id).c_str(), i);
     tuple_desc.push_back(ai->type);
     col_id_map.insert(std::make_pair(output_col_ids[i], i));
   }
@@ -175,13 +175,17 @@ OrderByTranslator::OrderByTranslator(const planner::OrderByPlan &plan,
     SortKeyInfo sort_key_info;
 
     if (iter != col_id_map.end()) {
+      /*
       LOG_DEBUG("Sort column %p (%s) references output column @ %u", ai,
                 TypeIdToString(ai->type.type_id).c_str(), iter->second);
+      */
       sort_key_info = {ai, true, iter->second};
     } else {
+      /*
       LOG_DEBUG("Adding sort column %p (%s) to tuple format @ %u", ai,
                 TypeIdToString(ai->type.type_id).c_str(),
                 static_cast<uint32_t>(tuple_desc.size()));
+      */
       tuple_desc.push_back(ai->type);
       sort_key_info = {ai, false, static_cast<uint32_t>(tuple_desc.size() - 1)};
     }

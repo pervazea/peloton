@@ -339,7 +339,7 @@ TEST_F(OptimizerSQLTests, DDLSqlTest) {
   auto cols = table->GetSchema()->GetColumns();
   EXPECT_EQ(3, cols.size());
   EXPECT_EQ("a", cols[0].GetName());
-  EXPECT_EQ(true, cols[0].IsPrimary());
+  EXPECT_EQ(true, table->GetSchema()->HasPrimary());
   EXPECT_EQ(type::TypeId::INTEGER, cols[0].GetType());
   EXPECT_EQ("b", cols[1].GetName());
   EXPECT_EQ(type::TypeId::INTEGER, cols[1].GetType());
@@ -644,7 +644,7 @@ TEST_F(OptimizerSQLTests, JoinTest) {
   TestUtil(
       "SELECT test.a, test.b+test2.b FROM TEST, TEST2 "
       "WHERE test.a = test2.a "
-      "ORDER BY test.c+test2.c LIMIT 3",
+      "ORDER BY test.a+test.c+test2.c LIMIT 3",
       {"1", "44", "2", "22", "4", "0"}, true);
 
   // Test group by with join
